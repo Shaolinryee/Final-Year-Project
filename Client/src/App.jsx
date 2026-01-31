@@ -1,6 +1,11 @@
+/**
+ * App Router Configuration
+ * Main authenticated app is under /app using nested routes.
+ */
+
 import React, { lazy, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import Loading from "./components/Loading";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -33,7 +38,12 @@ const GuideDetail = lazy(() => import("./pages/Marketing/GuideDetail"));
 const Articles = lazy(() => import("./pages/Marketing/Articles"));
 const Features = lazy(() => import("./pages/Marketing/Features"));
 const RequestDemo = lazy(() => import("./pages/Marketing/RequestDemo"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+
+// App pages (protected)
+const AppLayout = lazy(() => import("./app/layouts/AppLayout"));
+const ProjectsPage = lazy(() => import("./pages/App/ProjectsPage"));
+const BoardPage = lazy(() => import("./pages/App/BoardPage"));
+const NotificationsPage = lazy(() => import("./pages/App/NotificationsPage"));
 
 
 // Wrapper to add Suspense to each page individually
@@ -45,8 +55,8 @@ const withSuspense = (Component, fallback) => {
   );
 };
 
-// Wrapper for protected routes
-const withProtectedSuspense = (Component, fallback) => {
+// Wrapper for protected layout routes (with Outlet)
+const withProtectedLayout = (Component, fallback) => {
   return (
     <Suspense fallback={fallback}>
       <ProtectedRoute>
@@ -57,7 +67,7 @@ const withProtectedSuspense = (Component, fallback) => {
 };
 
 const router = createBrowserRouter([
-   {
+  {
     path: "/",
     element: withSuspense(HomePage, <Loading/>),
   },
@@ -161,9 +171,37 @@ const router = createBrowserRouter([
     path: "/request-demo",
     element: withSuspense(RequestDemo, <Loading/>),
   },
+  // Dashboard redirects to /app/projects
   {
     path: "/dashboard",
-    element: withProtectedSuspense(Dashboard, <Loading/>),
+    element: (
+      <ProtectedRoute>
+        <Navigate to="/app/projects" replace />
+      </ProtectedRoute>
+    ),
+  },
+  // Main App Routes (Protected)
+  {
+    path: "/app",
+    element: withProtectedLayout(AppLayout, <Loading/>),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/app/projects" replace />,
+      },
+      {
+        path: "projects",
+        element: withSuspense(ProjectsPage, <Loading/>),
+      },
+      {
+        path: "projects/:projectId/board",
+        element: withSuspense(BoardPage, <Loading/>),
+      },
+      {
+        path: "notifications",
+        element: withSuspense(NotificationsPage, <Loading/>),
+      },
+    ],
   },
   {
     path: "*",
