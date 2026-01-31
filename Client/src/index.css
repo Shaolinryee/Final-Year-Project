@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* =========================
+   CUSTOM THEME (ONE BLOCK ONLY)
+========================= */
+:root {
+  --brand-bg: #FFFFFF;
+  --brand-surface: #F8FAFC;
+  --brand-text: #0F172A;
+  --brand-text-muted: #64748B;
+  --brand-border: #E2E8F0;
+  --brand-primary: #2563EB;
+}
+
+.dark {
+  --brand-bg: #0C2034;
+  --brand-surface: #112B46;
+  --brand-text: #F8FAFC;
+  --brand-text-muted: #94A3B8;
+  --brand-border: #1E293B;
+  --brand-primary: #3B82F6;
+}
+
+@theme {
+  /* Colors mapped to variables */
+  --color-brand-dark: var(--brand-bg);
+  --color-brand-light: var(--brand-surface);
+  --color-text-primary: var(--brand-text);
+  --color-text-secondary: var(--brand-text-muted);
+  --color-brand: var(--brand-primary);
+  --color-brand-border: var(--brand-border);
+
+  /* Animations */
+  @keyframes slide-left {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(0); }
+  }
+
+  --animate-slide-left: slide-left 0.5s ease-out forwards;
+
+  @keyframes slide-down {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(0); }
+  }
+
+  --animate-slide-down: slide-down 0.5s ease-out forwards;
+
+  @keyframes horizontal-spin {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
+
+  --animate-horizontal-spin: horizontal-spin 1s linear infinite;
+}

@@ -1,0 +1,147 @@
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AuthInput from './components/AuthForm/AuthInput';
+import { validatePassword } from './components/AuthForm/authForm.validation';
+import { FaCheckCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
+
+const AccountSetup = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { session, updatePassword } = useAuth();
+  const email = location.state?.email || session?.user?.email || "user@example.com";
+  
+  const [formData, setFormData] = useState({
+    password: ''
+  });
+  const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // If user is not authenticated, redirect to signup
+    if (!session) {
+      navigate('/signup');
+    }
+  }, [session, navigate]);
+
+  const handleChange = (id, value) => {
+    setFormData((prev) => ({ ...prev, [id]: value }));
+    if (id === 'password') {
+      const error = validatePassword(value);
+      setErrors((prev) => ({ ...prev, password: error }));
+    }
+  };
+
+  const handleContinue = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) {
+        setErrors(prev => ({ ...prev, password: passwordError }));
+        return;
+    }
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      // Set password for the user
+      const passwordResult = await updatePassword(formData.password);
+
+      if (!passwordResult.success) {
+        setErrors({ general: passwordResult.error || 'Failed to set password' });
+        setLoading(false);
+        return;
+      }
+
+      // Success - navigate to dashboard
+      navigate("/dashboard");
+    } catch (error) {
+      console.error('Error setting password:', error);
+      setErrors({ general: error.message || 'An error occurred while setting password' });
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-brand-dark py-12 px-4 transition-colors duration-300">
+      <div className="max-w-[450px] w-full bg-brand-light p-10 rounded-3xl shadow-2xl border border-brand-border flex flex-col items-center transition-all duration-300">
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-10 transition-transform hover:scale-105 duration-300">
+            <div className="w-10 h-10 bg-brand rounded-xl transform rotate-45 flex items-center justify-center shadow-lg shadow-brand/20">
+                <div className="w-5 h-5 bg-white rounded-full"></div>
+            </div>
+          <span className="text-text-primary text-3xl font-black tracking-tight uppercase">CollabSpace</span>
+        </div>
+
+        <div className="flex items-center gap-2 mb-2">
+          <h1 className="text-text-primary text-xl font-bold">Email verified</h1>
+          <FaCheckCircle className="text-green-500 text-xl" />
+        </div>
+        <p className="text-sm text-text-secondary mb-8 font-medium">Create a password to complete your account</p>
+
+        <form onSubmit={handleContinue} className="w-full">
+          {errors.general && (
+            <div className="w-full mb-4 p-3 rounded-xl text-sm font-medium bg-red-500/20 text-red-500 border border-red-500/30">
+              {errors.general}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1 w-full mb-6 p-4 bg-brand-dark/50 rounded-xl border border-brand-border">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Email address</label>
+            <p className="text-base font-bold text-text-primary">{email}</p>
+          </div>
+
+          <div className="relative w-full">
+            <AuthInput
+              label="Password"
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Create password"
+              value={formData.password}
+              onChange={(e) => handleChange('password', e.target.value)}
+              error={errors.password}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-[42px] text-text-secondary hover:text-brand transition-colors p-1"
+            >
+              {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+            </button>
+          </div>
+          <p className="text-[11px] text-text-secondary mt-2 font-medium">Password must have at least 8 characters</p>
+
+          <p className="text-[11px] text-text-secondary mt-8 leading-relaxed font-medium">
+            By signing up, I accept the CollabSpace <a href="#" className="text-brand hover:underline font-bold">Cloud Terms of Service</a> and acknowledge the <a href="#" className="text-brand hover:underline font-bold">Privacy Policy</a>.
+          </p>
+
+          <button
+            type="submit"
+            disabled={loading || !!errors.password}
+            className={`w-full mt-8 py-4 rounded-xl font-bold text-white transition-all shadow-lg active:scale-95
+              ${loading || !!errors.password ? 'bg-brand/20 text-white/30 cursor-not-allowed border border-brand/10' : 'bg-brand hover:opacity-90 shadow-brand/20'}
+            `}
+          >
+            {loading ? 'Creating account...' : 'Create Account'}
+          </button>
+        </form>
+
+        <div className="mt-10 pt-8 border-t border-brand-border w-full flex flex-col items-center gap-4">
+             <div className="flex items-center gap-2 opacity-40 hover:opacity-70 transition-opacity duration-300">
+                <div className="w-5 h-5 bg-text-primary rounded-sm transform rotate-45"></div>
+                <span className="text-text-primary text-xs font-bold uppercase tracking-widest">CollabSpace</span>
+             </div>
+             <p className="text-[11px] text-text-secondary text-center max-w-[320px] font-medium leading-relaxed">
+                One account for Jira, Confluence, Trello and <a href="#" className="text-brand hover:underline font-bold">more</a>.
+                This site is protected by reCAPTCHA and the Google <a href="#" className="text-brand hover:underline font-bold">Privacy Policy</a> and <a href="#" className="text-brand hover:underline font-bold">Terms of Service</a> apply.
+             </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AccountSetup;
