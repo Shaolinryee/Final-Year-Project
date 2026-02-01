@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
 /* =========================
+   GLOBAL HEIGHT FIX
+========================= */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* =========================
    CUSTOM THEME (ONE BLOCK ONLY)
 ========================= */
 :root {

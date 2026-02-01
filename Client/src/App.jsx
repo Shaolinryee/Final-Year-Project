@@ -1,6 +1,6 @@
 /**
  * App Router Configuration
- * Main authenticated app is under /app using nested routes.
+ * Main authenticated app uses Jira-like layout with sidebar navigation.
  */
 
 import React, { lazy, Suspense } from "react";
@@ -39,11 +39,32 @@ const Articles = lazy(() => import("./pages/Marketing/Articles"));
 const Features = lazy(() => import("./pages/Marketing/Features"));
 const RequestDemo = lazy(() => import("./pages/Marketing/RequestDemo"));
 
-// App pages (protected)
+// Legacy App pages (protected) - can be removed when fully migrated
 const AppLayout = lazy(() => import("./app/layouts/AppLayout"));
 const ProjectsPage = lazy(() => import("./pages/App/ProjectsPage"));
 const BoardPage = lazy(() => import("./pages/App/BoardPage"));
 const NotificationsPage = lazy(() => import("./pages/App/NotificationsPage"));
+
+// Phase 1 & 2 MVP pages (protected) - Jira-like layout
+const AppShell = lazy(() => import("./components/layout/AppShell"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Projects = lazy(() => import("./pages/Projects"));
+const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
+
+// New protected pages
+const MyTasks = lazy(() => import("./pages/MyTasks"));
+const GlobalActivity = lazy(() => import("./pages/GlobalActivity"));
+const Invitations = lazy(() => import("./pages/Invitations"));
+const Profile = lazy(() => import("./pages/Profile"));
+
+// Project nested route components
+const ProjectLayout = lazy(() => import("./pages/project/ProjectLayout"));
+const ProjectOverview = lazy(() => import("./pages/project/ProjectOverview"));
+const ProjectTasks = lazy(() => import("./pages/project/ProjectTasks"));
+const ProjectMembers = lazy(() => import("./pages/project/ProjectMembers"));
+const ProjectActivity = lazy(() => import("./pages/project/ProjectActivity"));
+const ProjectSettings = lazy(() => import("./pages/project/ProjectSettings"));
+const TaskDetail = lazy(() => import("./pages/project/TaskDetail"));
 
 
 // Wrapper to add Suspense to each page individually
@@ -171,23 +192,87 @@ const router = createBrowserRouter([
     path: "/request-demo",
     element: withSuspense(RequestDemo, <Loading/>),
   },
-  // Dashboard redirects to /app/projects
+  // ==========================================
+  // Protected Routes with Jira-like AppShell
+  // ==========================================
   {
-    path: "/dashboard",
-    element: (
-      <ProtectedRoute>
-        <Navigate to="/app/projects" replace />
-      </ProtectedRoute>
-    ),
+    path: "/",
+    element: withProtectedLayout(AppShell, <Loading/>),
+    children: [
+      // Dashboard
+      {
+        path: "dashboard",
+        element: withSuspense(Dashboard, <Loading/>),
+      },
+      // Projects list
+      {
+        path: "projects",
+        element: withSuspense(Projects, <Loading/>),
+      },
+      // Project nested routes
+      {
+        path: "projects/:projectId",
+        element: withSuspense(ProjectLayout, <Loading/>),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="overview" replace />,
+          },
+          {
+            path: "overview",
+            element: withSuspense(ProjectOverview, <Loading/>),
+          },
+          {
+            path: "tasks",
+            element: withSuspense(ProjectTasks, <Loading/>),
+            children: [
+              {
+                path: ":taskId",
+                element: withSuspense(TaskDetail, <Loading/>),
+              },
+            ],
+          },
+          {
+            path: "members",
+            element: withSuspense(ProjectMembers, <Loading/>),
+          },
+          {
+            path: "activity",
+            element: withSuspense(ProjectActivity, <Loading/>),
+          },
+          {
+            path: "settings",
+            element: withSuspense(ProjectSettings, <Loading/>),
+          },
+        ],
+      },
+      // New protected routes
+      {
+        path: "my-tasks",
+        element: withSuspense(MyTasks, <Loading/>),
+      },
+      {
+        path: "activity",
+        element: withSuspense(GlobalActivity, <Loading/>),
+      },
+      {
+        path: "invitations",
+        element: withSuspense(Invitations, <Loading/>),
+      },
+      {
+        path: "profile",
+        element: withSuspense(Profile, <Loading/>),
+      },
+    ],
   },
-  // Main App Routes (Protected)
+  // Legacy App Routes (Protected) - can be removed when Phase 1 is stable
   {
     path: "/app",
     element: withProtectedLayout(AppLayout, <Loading/>),
     children: [
       {
         index: true,
-        element: <Navigate to="/app/projects" replace />,
+        element: <Navigate to="/dashboard" replace />,
       },
       {
         path: "projects",

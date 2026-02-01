@@ -8,13 +8,13 @@ import { forwardRef } from "react";
 
 const variants = {
   primary:
-    "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600",
+    "bg-brand text-white hover:bg-indigo-700 focus:ring-brand",
   secondary:
-    "bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600",
+    "bg-brand-dark/10 dark:bg-white/10 text-text-primary hover:bg-brand-dark/20 dark:hover:bg-white/20 focus:ring-gray-500",
   outline:
-    "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800",
+    "border border-brand-border text-text-primary hover:bg-brand-dark/5 dark:hover:bg-white/5 focus:ring-gray-500",
   ghost:
-    "text-gray-700 hover:bg-gray-100 focus:ring-gray-500 dark:text-gray-300 dark:hover:bg-gray-800",
+    "text-text-primary hover:bg-brand-dark/10 dark:hover:bg-white/10 focus:ring-gray-500",
   danger:
     "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 dark:bg-red-500 dark:hover:bg-red-600",
 };

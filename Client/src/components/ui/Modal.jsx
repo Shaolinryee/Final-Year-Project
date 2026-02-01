@@ -63,7 +63,7 @@ const Modal = ({
         aria-labelledby="modal-title"
         className={`
           relative w-full ${sizes[size]} 
-          bg-white dark:bg-gray-800 
+          bg-brand-light
           rounded-xl shadow-xl 
           transform transition-all
           animate-in fade-in zoom-in-95 duration-200
@@ -71,11 +71,11 @@ const Modal = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border">
             {title && (
               <h2
                 id="modal-title"
-                className="text-lg font-semibold text-gray-900 dark:text-white"
+                className="text-lg font-semibold text-text-primary"
               >
                 {title}
               </h2>
@@ -83,7 +83,7 @@ const Modal = ({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 -mr-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                className="p-2 -mr-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-brand-dark/10 dark:hover:bg-white/10 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -98,7 +98,7 @@ const Modal = ({
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+          <div className="px-6 py-4 border-t border-brand-border flex items-center justify-end gap-3">
             {footer}
           </div>
         )}
