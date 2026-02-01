@@ -6,6 +6,7 @@ import { useState } from "react";
 import { UserPlus, Users } from "lucide-react";
 import { useProject } from "./ProjectLayout";
 import { membersApi, invitationsApi } from "../../services/api";
+import { useNotifications } from "../../context/NotificationContext";
 import { Button, Alert, EmptyState } from "../../components/ui";
 import { MemberRow, InviteMemberModal, PendingInvites } from "../../components/members";
 import { canInviteMembers, canChangeRoles, canRemoveMember } from "../../utils/permissions";
@@ -27,6 +28,7 @@ const ProjectMembers = () => {
     fetchInvitations,
   } = useProject();
 
+  const { refresh: refreshNotifications } = useNotifications();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [error, setError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -46,6 +48,9 @@ const ProjectMembers = () => {
 
       setInvitations((prev) => [...prev, data]);
       setIsInviteOpen(false);
+      
+      // Refresh notifications (notification was created for invited user)
+      refreshNotifications();
     } catch (err) {
       setError(err.message);
     } finally {

@@ -31,7 +31,8 @@ import {
 } from "lucide-react";
 import { getCurrentUserId, getUsersStore } from "../../services/mock/users.mock";
 import { useProject } from "./ProjectLayout";
-import { tasksApi } from "../../services/api";
+import { tasksApi, commentsApi } from "../../services/api";
+import { useNotifications } from "../../context/NotificationContext";
 import { Button, Alert, StatusPill, ConfirmDialog } from "../../components/ui";
 import { TaskFormModal } from "../../components/tasks";
 import { ActivityFeed } from "../../components/activity";
@@ -118,6 +119,9 @@ const TaskDetail = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+
+  // Notifications context for refreshing after comment
+  const { refresh: refreshNotifications } = useNotifications();
 
   // Comments state
   const [comments, setComments] = useState([]);
@@ -316,23 +320,26 @@ const TaskDetail = () => {
 
     setCommentSubmitting(true);
     
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    
-    const comment = {
-      id: `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      taskId,
-      projectId,
-      authorUserId: commentUser.id,
-      authorName: commentUser.name,
-      authorAvatarUrl: commentUser.avatarUrl,
-      content: newComment.trim(),
-      createdAt: new Date().toISOString(),
-    };
-
-    setComments((prev) => [comment, ...prev]);
-    setNewComment("");
-    setCommentSubmitting(false);
+    try {
+      // Use API to add comment - this will trigger notification
+      const { data: comment, error: commentError } = await commentsApi.add(taskId, newComment.trim());
+      
+      if (commentError) {
+        console.error('Failed to add comment:', commentError);
+        setCommentSubmitting(false);
+        return;
+      }
+      
+      setComments((prev) => [comment, ...prev]);
+      setNewComment("");
+      
+      // Refresh notifications after adding comment (to see bell update)
+      refreshNotifications();
+    } catch (err) {
+      console.error('Error adding comment:', err);
+    } finally {
+      setCommentSubmitting(false);
+    }
   };
 
   const handleDeleteComment = (commentId) => {

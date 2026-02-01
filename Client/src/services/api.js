@@ -410,5 +410,109 @@ export const activityApi = {
   },
 };
 
+// ==================== NOTIFICATION APIs ====================
+
+export const notificationsApi = {
+  /**
+   * Get notifications for current user
+   */
+  getMyNotifications: async () => {
+    try {
+      const data = await mockApi.getMyNotifications();
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error: error.message || "Failed to fetch notifications" };
+    }
+  },
+
+  /**
+   * Get paginated notifications for current user (for infinite scroll)
+   * @param {Object} options - Pagination and filter options
+   * @param {number} options.limit - Number of items per page (default: 20)
+   * @param {number} options.offset - Starting offset (default: 0)
+   * @param {boolean} options.unreadOnly - Filter to unread only (default: false)
+   * @param {string} options.tab - Tab filter: 'direct' or 'watching' (default: 'direct')
+   * @returns {Promise<{data: {data: Array, total: number, hasMore: boolean, nextOffset: number}, error: string|null}>}
+   */
+  getNotificationsPaginated: async (options = {}) => {
+    try {
+      const result = await mockApi.getMyNotificationsPaginated(options);
+      return { data: result, error: null };
+    } catch (error) {
+      return { 
+        data: { data: [], total: 0, hasMore: false, nextOffset: 0 }, 
+        error: error.message || "Failed to fetch notifications" 
+      };
+    }
+  },
+
+  /**
+   * Get unread count for current user
+   */
+  getUnreadCount: async () => {
+    try {
+      const data = await mockApi.getMyUnreadCount();
+      return { data, error: null };
+    } catch (error) {
+      return { data: 0, error: error.message || "Failed to fetch unread count" };
+    }
+  },
+
+  /**
+   * Mark a notification as read
+   */
+  markAsRead: async (notificationId) => {
+    try {
+      const data = await mockApi.markNotificationRead(notificationId);
+      if (!data) {
+        return { data: null, error: "Notification not found" };
+      }
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error: error.message || "Failed to mark as read" };
+    }
+  },
+
+  /**
+   * Mark all notifications as read
+   */
+  markAllAsRead: async () => {
+    try {
+      const count = await mockApi.markAllNotificationsRead();
+      return { data: count, error: null };
+    } catch (error) {
+      return { data: 0, error: error.message || "Failed to mark all as read" };
+    }
+  },
+
+  /**
+   * Delete a notification
+   */
+  delete: async (notificationId) => {
+    try {
+      const success = await mockApi.deleteNotificationById(notificationId);
+      return { success, error: null };
+    } catch (error) {
+      return { success: false, error: error.message || "Failed to delete notification" };
+    }
+  },
+};
+
+// ==================== COMMENT APIs ====================
+
+export const commentsApi = {
+  /**
+   * Add a comment to a task
+   */
+  add: async (taskId, content) => {
+    try {
+      const data = await mockApi.addTaskComment(taskId, content);
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error: error.message || "Failed to add comment" };
+    }
+  },
+};
+
 // Export utilities
 export { generateProjectKey } from "./mock/api.mock";

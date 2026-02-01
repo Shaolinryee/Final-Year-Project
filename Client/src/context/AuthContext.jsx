@@ -344,6 +344,7 @@ export const AuthContextProvider = ({ children }) => {
     signUpWithOTP,
     signIn,
     signOut,
+    logout: signOut, // Alias for compatibility
     verifyOTP,
     resendOTP,
     resetPassword,

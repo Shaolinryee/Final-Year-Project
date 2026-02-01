@@ -31,6 +31,16 @@ import {
   getActivityByProject,
   addActivity,
 } from "./activity.mock";
+import {
+  getNotificationsByUser,
+  getNotificationsPaginated,
+  getUnreadCount,
+  createNotification,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  NOTIFICATION_TYPES,
+} from "./notifications.mock";
 
 // Simulate network delay (300-800ms)
 const delay = (ms = Math.random() * 500 + 300) =>
@@ -210,8 +220,31 @@ export const updateTaskStatus = async (taskId, status) => {
   
   if (index === -1) return null;
   
+  const task = tasks[index];
+  const previousStatus = task.status;
+  
   tasks[index] = { ...tasks[index], status };
   setTasksStore([...tasks]);
+  
+  // Notify assignee about status change (but NOT if they changed it themselves)
+  const currentUserId = getCurrentUserId();
+  const assigneeId = task.assignedToUserId;
+  
+  if (assigneeId && assigneeId !== currentUserId && previousStatus !== status) {
+    // Format status for display
+    const statusDisplay = status.replace(/_/g, ' ').toLowerCase()
+      .replace(/\b\w/g, l => l.toUpperCase());
+    
+    createNotification({
+      userId: assigneeId,
+      type: NOTIFICATION_TYPES.TASK_STATUS_CHANGED,
+      title: 'Task Status Updated',
+      message: `"${task.title}" moved to ${statusDisplay}`,
+      link: `/projects/${task.projectId}/tasks/${task.id}`,
+      projectId: task.projectId,
+      taskId: task.id,
+    });
+  }
   
   return clone(tasks[index]);
 };
@@ -503,6 +536,19 @@ export const createProjectInvitation = async (projectId, email, role = "member")
     invitedBy: user?.name || "Unknown",
   });
 
+  // Create notification for the invited user (if they exist in system)
+  const project = getProjectsStore().find((p) => p.id === projectId);
+  if (existingUser) {
+    createNotification({
+      userId: existingUser.id,
+      type: NOTIFICATION_TYPES.INVITE_RECEIVED,
+      title: 'Project Invitation',
+      message: `You were invited to join ${project?.name || 'a project'}`,
+      link: '/invitations',
+      projectId,
+    });
+  }
+
   return clone(newInvitation);
 };
 
@@ -560,6 +606,24 @@ export const acceptInvitation = async (invitationId) => {
   // Log activity
   await logActivity(projectId, user.id, "invitation_accepted", {
     userName: user.name,
+  });
+
+  // Notify project owners and admins about the new member
+  const project = getProjectsStore().find((p) => p.id === projectId);
+  const members = getMembersByProject(projectId);
+  const ownersAndAdmins = members.filter(
+    (m) => (m.role === 'owner' || m.role === 'admin') && m.userId !== user.id
+  );
+  
+  ownersAndAdmins.forEach((member) => {
+    createNotification({
+      userId: member.userId,
+      type: NOTIFICATION_TYPES.INVITE_ACCEPTED,
+      title: 'New Team Member',
+      message: `${user.name} joined ${project?.name || 'the project'}`,
+      link: `/projects/${projectId}/members`,
+      projectId,
+    });
   });
 
   return clone(invitations[index]);
@@ -681,6 +745,19 @@ export const assignTask = async (taskId, userId) => {
     });
   }
 
+  // Notify assignee (but NOT if assigning to self)
+  if (userId && userId !== currentUserId) {
+    createNotification({
+      userId,
+      type: NOTIFICATION_TYPES.TASK_ASSIGNED,
+      title: 'Task Assigned',
+      message: `You were assigned to "${task.title}"`,
+      link: `/projects/${task.projectId}/tasks/${task.id}`,
+      projectId: task.projectId,
+      taskId: task.id,
+    });
+  }
+
   return clone(updatedTask);
 };
 
@@ -730,4 +807,124 @@ export const logActivity = async (projectId, actorUserId, type, meta = {}) => {
 
   addActivity(newActivity);
   return clone(newActivity);
+};
+
+/* ==================== COMMENT APIs ==================== */
+
+/**
+ * Add a comment to a task
+ * @param {string} taskId - The task ID
+ * @param {string} content - Comment content
+ * @returns {Promise<Object>} Created comment
+ */
+export const addTaskComment = async (taskId, content) => {
+  await delay();
+
+  const tasks = getTasksStore();
+  const task = tasks.find((t) => t.id === taskId);
+  
+  if (!task) {
+    throw new Error("Task not found");
+  }
+
+  const currentUserId = getCurrentUserId();
+  const currentUser = getUsersStore().find((u) => u.id === currentUserId);
+  
+  const comment = {
+    id: generateId("comment"),
+    taskId,
+    projectId: task.projectId,
+    authorUserId: currentUserId,
+    authorName: currentUser?.name || "Unknown",
+    authorAvatarUrl: currentUser?.avatarUrl || null,
+    content,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Log activity
+  await logActivity(task.projectId, currentUserId, "comment_added", {
+    taskTitle: task.title,
+    commentPreview: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+  });
+
+  // Notify task assignee (but NOT if commenter is the assignee)
+  const assigneeId = task.assignedToUserId;
+  if (assigneeId && assigneeId !== currentUserId) {
+    createNotification({
+      userId: assigneeId,
+      type: NOTIFICATION_TYPES.TASK_COMMENT,
+      title: 'New Comment',
+      message: `New comment on "${task.title}"`,
+      link: `/projects/${task.projectId}/tasks/${task.id}`,
+      projectId: task.projectId,
+      taskId: task.id,
+    });
+  }
+
+  return clone(comment);
+};
+
+/* ==================== NOTIFICATION APIs ==================== */
+
+/**
+ * Get notifications for the current user (legacy - returns all)
+ * @returns {Promise<Array>} User's notifications
+ */
+export const getMyNotifications = async () => {
+  await delay();
+  const currentUserId = getCurrentUserId();
+  return clone(getNotificationsByUser(currentUserId));
+};
+
+/**
+ * Get notifications with pagination and filtering
+ * @param {Object} options - { limit, offset, unreadOnly, tab }
+ * @returns {Promise<Object>} { data, total, hasMore, nextOffset }
+ */
+export const getMyNotificationsPaginated = async (options = {}) => {
+  await delay(200); // Faster for pagination UX
+  const currentUserId = getCurrentUserId();
+  const result = getNotificationsPaginated(currentUserId, options);
+  return clone(result);
+};
+
+/**
+ * Get unread notification count for current user
+ * @returns {Promise<number>} Unread count
+ */
+export const getMyUnreadCount = async () => {
+  await delay(100); // Fast for badge updates
+  const currentUserId = getCurrentUserId();
+  return getUnreadCount(currentUserId);
+};
+
+/**
+ * Mark a notification as read
+ * @param {string} notificationId - The notification ID
+ * @returns {Promise<Object|null>} Updated notification or null
+ */
+export const markNotificationRead = async (notificationId) => {
+  await delay();
+  const notification = markNotificationAsRead(notificationId);
+  return notification ? clone(notification) : null;
+};
+
+/**
+ * Mark all notifications as read for current user
+ * @returns {Promise<number>} Number marked as read
+ */
+export const markAllNotificationsRead = async () => {
+  await delay();
+  const currentUserId = getCurrentUserId();
+  return markAllNotificationsAsRead(currentUserId);
+};
+
+/**
+ * Delete a notification
+ * @param {string} notificationId - The notification ID
+ * @returns {Promise<boolean>} Success
+ */
+export const deleteNotificationById = async (notificationId) => {
+  await delay();
+  return deleteNotification(notificationId);
 };

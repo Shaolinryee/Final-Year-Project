@@ -26,18 +26,13 @@ const Navbar = () => {
                 to="/"
                 className="flex items-center gap-2 text-text-primary cursor-pointer hover:text-brand transition"
               >
-                {/* Logo Image (optional) */}
-                                
-  {/* <div className="w-10 h-14 rounded-lg flex items-center justify-center ml-1.5">
-    <img src={logo} alt="Logo" className="w-full h-full object-contain" />
-  </div>  */}
-                  {/* Logo */}
-              <div className="w-5 h-5 bg-[#0052CC] rounded-sm transform rotate-45 flex items-center justify-center">
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-            </div>
+                {/* Logo */}
+                <div className="w-8 h-8 bg-brand rounded-xl transform rotate-45 flex items-center justify-center shadow-lg shadow-brand/20">
+                  <div className="w-4 h-4 bg-white rounded-full"></div>
+                </div>
 
-                <span className="font-bold text-[25px]">
-                  CollabWeb
+                <span className="font-black text-[22px] uppercase tracking-tight">
+                  CollabSpace
                 </span>
               </Link>
 

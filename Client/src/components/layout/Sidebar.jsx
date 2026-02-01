@@ -109,9 +109,23 @@ const Sidebar = ({ collapsed, onToggle }) => {
       }
       title={collapsed ? item.name : undefined}
     >
-      <item.icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? "" : ""}`} />
+      <div className="relative">
+        <item.icon className={`w-5 h-5 flex-shrink-0`} />
+        {/* Badge for notifications */}
+        {item.badge && collapsed && (
+          <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center px-0.5">
+            {item.badge > 99 ? '99+' : item.badge}
+          </span>
+        )}
+      </div>
       {showLabel && !collapsed && (
-        <span className="truncate">{item.name}</span>
+        <span className="truncate flex-1">{item.name}</span>
+      )}
+      {/* Badge for notifications when expanded */}
+      {item.badge && !collapsed && (
+        <span className="min-w-[20px] h-[20px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+          {item.badge > 99 ? '99+' : item.badge}
+        </span>
       )}
     </NavLink>
   );
@@ -125,12 +139,12 @@ const Sidebar = ({ collapsed, onToggle }) => {
       {/* Logo */}
       <div className={`h-16 flex items-center border-b border-brand-border ${collapsed ? "justify-center px-2" : "px-4"}`}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-brand to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <FolderKanban className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 bg-brand rounded-xl transform rotate-45 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand/20">
+            <div className="w-4 h-4 bg-white rounded-full"></div>
           </div>
           {!collapsed && (
-            <span className="font-bold text-lg text-text-primary tracking-tight">
-              CollabWeb
+            <span className="font-black text-lg text-text-primary uppercase tracking-tight">
+              CollabSpace
             </span>
           )}
         </div>

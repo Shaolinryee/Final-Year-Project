@@ -10,6 +10,7 @@ import Loading from "./components/Loading";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthContextProvider } from "./context/AuthContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 // Lazy load pages
 const HomePage = lazy(() => import("./pages/Marketing/HomePage"));
@@ -43,7 +44,6 @@ const RequestDemo = lazy(() => import("./pages/Marketing/RequestDemo"));
 const AppLayout = lazy(() => import("./app/layouts/AppLayout"));
 const ProjectsPage = lazy(() => import("./pages/App/ProjectsPage"));
 const BoardPage = lazy(() => import("./pages/App/BoardPage"));
-const NotificationsPage = lazy(() => import("./pages/App/NotificationsPage"));
 
 // Phase 1 & 2 MVP pages (protected) - Jira-like layout
 const AppShell = lazy(() => import("./components/layout/AppShell"));
@@ -282,10 +282,6 @@ const router = createBrowserRouter([
         path: "projects/:projectId/board",
         element: withSuspense(BoardPage, <Loading/>),
       },
-      {
-        path: "notifications",
-        element: withSuspense(NotificationsPage, <Loading/>),
-      },
     ],
   },
   {
@@ -297,11 +293,13 @@ const router = createBrowserRouter([
 function App() {
   return (
     <AuthContextProvider>
-    <ThemeProvider>
-      <ErrorBoundary fallback={<div>Something went wrong</div>}>
-        <RouterProvider router={router} />
-      </ErrorBoundary>
-    </ThemeProvider>
+      <ThemeProvider>
+        <NotificationProvider>
+          <ErrorBoundary fallback={<div>Something went wrong</div>}>
+            <RouterProvider router={router} />
+          </ErrorBoundary>
+        </NotificationProvider>
+      </ThemeProvider>
     </AuthContextProvider>
   );
 }

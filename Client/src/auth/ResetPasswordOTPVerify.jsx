@@ -14,8 +14,8 @@ const ResetPasswordOTPVerify = () => {
   const [rateLimited, setRateLimited] = useState(false);
 
   const handleVerify = async (otp) => {
-    if (!otp || otp.length !== 6) {
-      setError('Please enter a valid 6-digit code');
+    if (!otp || otp.length !== 8) {
+      setError('Please enter a valid 8-digit code');
       return;
     }
 

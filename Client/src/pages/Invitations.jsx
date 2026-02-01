@@ -7,10 +7,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Check, X, Clock, FolderKanban, AlertCircle } from "lucide-react";
 import { invitationsApi, projectsApi, usersApi } from "../services/api";
+import { useNotifications } from "../context/NotificationContext";
 import { Button, EmptyState, Alert } from "../components/ui";
 
 const Invitations = () => {
   const navigate = useNavigate();
+  const { refresh: refreshNotifications } = useNotifications();
   const [invitations, setInvitations] = useState([]);
   const [projects, setProjects] = useState({});
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,9 @@ const Invitations = () => {
 
       // Remove from list
       setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+      
+      // Refresh notifications to update count
+      refreshNotifications();
     } catch (err) {
       setError(err.message);
     } finally {

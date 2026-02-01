@@ -59,11 +59,11 @@ const AppLayout = () => {
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
           {sidebarOpen && (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <LayoutDashboard className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 bg-brand rounded-xl transform rotate-45 flex items-center justify-center shadow-lg shadow-brand/20">
+                <div className="w-4 h-4 bg-white rounded-full"></div>
               </div>
-              <span className="font-bold text-xl text-gray-900 dark:text-white">
-                CollabWeb
+              <span className="font-black text-xl text-gray-900 dark:text-white uppercase tracking-tight">
+                CollabSpace
               </span>
             </div>
           )}

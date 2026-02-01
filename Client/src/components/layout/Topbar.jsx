@@ -1,12 +1,13 @@
 /**
  * Topbar Component
- * Minimal topbar with profile dropdown, theme toggle, and logout
+ * Minimal topbar with profile dropdown, theme toggle, notifications, and logout
  */
 
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useNotifications } from "../../context/NotificationContext";
 import {
   LogOut,
   ChevronDown,
@@ -16,13 +17,17 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Bell,
 } from "lucide-react";
 import { projectsApi, tasksApi } from "../../services/api";
+import NotificationsDrawer from "../notifications/NotificationsDrawer";
 
 const Topbar = ({ onToggleSidebar }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId, taskId } = useParams();
@@ -120,8 +125,28 @@ const Topbar = ({ onToggleSidebar }) => {
         </nav>
       </div>
 
-      {/* Right - Theme Toggle + User Menu */}
+      {/* Right - Notifications + Theme Toggle + User Menu */}
       <div className="flex items-center gap-3">
+        {/* Notifications Bell */}
+        <button
+          onClick={() => setNotificationsDrawerOpen(true)}
+          className="relative p-2 rounded-lg bg-brand-dark/30 border border-brand-border text-text-primary hover:bg-brand-dark/50 transition-all"
+          title="Notifications"
+        >
+          <Bell className="w-4 h-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
+
+        {/* Notifications Drawer */}
+        <NotificationsDrawer
+          isOpen={notificationsDrawerOpen}
+          onClose={() => setNotificationsDrawerOpen(false)}
+        />
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
