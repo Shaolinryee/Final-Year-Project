@@ -14,8 +14,8 @@ const OTPVerify = () => {
   const [rateLimited, setRateLimited] = useState(false);
 
   const handleVerify = async (otp) => {
-    if (!otp || otp.length !== 6) {
-      setError('Please enter a valid 6-digit code');
+    if (!otp || otp.length !== 8) {
+      setError('Please enter a valid 8-digit code');
       return;
     }
 
@@ -78,7 +78,7 @@ const OTPVerify = () => {
         <div className="w-full mb-4 p-3 rounded-xl text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20">
           <p className="font-medium mb-1">📧 Received a link instead of a code?</p>
           <p className="text-[10px] leading-relaxed">
-            If you received a confirmation <strong>link</strong> instead of a 6-digit code, you need to configure Supabase to send OTP codes. Go to Authentication → Email Templates and update the template to show the OTP code using the variable <code>{'{{ .Token }}'}</code>. Check your spam folder if you don't see the email.
+            If you received a confirmation <strong>link</strong> instead of an 8-digit code, you need to configure Supabase to send OTP codes. Go to Authentication → Email Templates and update the template to show the OTP code using the variable <code>{'{{ .Token }}'}</code>. Check your spam folder if you don't see the email.
           </p>
         </div>
 
