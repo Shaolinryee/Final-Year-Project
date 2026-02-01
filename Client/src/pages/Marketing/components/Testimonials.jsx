@@ -7,19 +7,19 @@ const Testimonials = () => {
         {
             name: "Anjal Rai",
             role: "CTO, TechInnovate",
-            quote: "CollabWeb transformed how we manage complex projects across multiple teams. The automation engine is a game-changer.",
+            quote: "CollabWeb transformed how we manage complex projects across multiple teams. The Kanban boards keep everyone aligned.",
             avatar: Feature1
         },
         {
             name: "Sidhartha Shrestha",
             role: "Operations Director, GlobalSolutions",
-            quote: "Our productivity increased by 40% after implementing CollabWeb. It's rare to find a tool that teams actually love using.",
+            quote: "Our team collaboration improved significantly after implementing CollabWeb. It's rare to find a tool that teams actually love using.",
             avatar: Feature1
         },
         {
             name: "Shaolin Rai",
             role: "Project Manager, CreativeSpark",
-            quote: "The intuitive interface made onboarding our team seamless. We were up and running with complex workflows in days.",
+            quote: "The intuitive interface made onboarding our team seamless. We were organized and productive within hours.",
             avatar: Feature1
         }
     ];
@@ -37,7 +37,7 @@ const Testimonials = () => {
                 Loved by teams <br /> <span className="text-blue-500">around the world.</span>
             </h2>
             <p className="max-w-2xl mx-auto text-lg text-text-primary opacity-60">
-                Join thousands of high-performing teams who have revolutionized their workflow with CollabWeb.
+                Join teams who have improved their workflow with CollabWeb's intuitive task management.
             </p>
           </div>
 

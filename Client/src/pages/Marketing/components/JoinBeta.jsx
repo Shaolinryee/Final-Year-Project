@@ -16,7 +16,7 @@ const JoinBeta = () => {
                     Join the <span className="text-blue-500">exclusive beta.</span>
                 </h2>
                 <p className="text-xl text-text-primary opacity-60 leading-relaxed max-w-xl">
-                    Get early access to our upcoming enterprise features and help us shape the future of collaborative work management.
+                    Be among the first to try new features and help us shape the future of collaborative task management.
                 </p>
                 
                 <div className="flex flex-col gap-4 max-w-md">
@@ -32,7 +32,7 @@ const JoinBeta = () => {
                     </div>
                     <p className="text-xs text-text-primary opacity-30 flex items-center gap-2">
                         <span className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span>
-                        342 teams already in the waitlist
+                        Join teams already using CollabWeb
                     </p>
                 </div>
 

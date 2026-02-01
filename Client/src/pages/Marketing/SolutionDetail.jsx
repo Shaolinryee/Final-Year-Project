@@ -7,47 +7,47 @@ import { FaRocket, FaShieldAlt, FaGraduationCap, FaBriefcase, FaCheckCircle, FaA
 const solutionData = {
     "startups": {
         title: "Solutions for Startups",
-        subtitle: "Move fast, build traction, and scale your vision without the administrative overhead.",
+        subtitle: "Move fast, stay organized, and build your vision with a clean, intuitive workspace.",
         icon: <FaRocket className="text-6xl text-blue-500" />,
         features: [
-            { title: "Lean Methodology", description: "Minimalist project structures that adapt as fast as your roadmap does." },
-            { title: "Founder-Centric Dashboards", description: "Get a high-level view of every department in a single click." },
-            { title: "Seamless Scaling", description: "Transition from a 2-person team to a 200-person organization seamlessly." }
+            { title: "Simple Setup", description: "Get your workspace running in minutes with intuitive Kanban boards." },
+            { title: "Team Dashboard", description: "Get a clear view of all projects and task progress at a glance." },
+            { title: "Flexible Structure", description: "Organize work your way as your team grows and evolves." }
         ],
-        description: "In the early days of a startup, speed is your only unfair advantage. CollabSpace for Startups is designed to get out of your way and let you focus on what matters: building a great product and finding product-market fit. With our lightweight templates and intuitive interface, you can set up your entire company's workflow in minutes, not days."
+        description: "In the early days of a startup, clarity is your unfair advantage. CollabWeb for Startups is designed to get out of your way and let you focus on what matters: building a great product. With our intuitive interface, you can set up your workspace and start collaborating in minutes."
     },
     "enterprises": {
-        title: "Enterprise Excellence",
-        subtitle: "Unify complex organizations with advanced security, permissions, and cross-functional reporting.",
+        title: "For Growing Teams",
+        subtitle: "Keep larger teams aligned with role-based permissions and activity tracking.",
         icon: <FaShieldAlt className="text-6xl text-blue-500" />,
         features: [
-            { title: "Advanced Permissions", description: "Roles-based access control to protect sensitive data across global teams." },
-            { title: "Centralized Reporting", description: "Aggregate data from hundreds of projects into actionable executive insights." },
-            { title: "Compliance Ready", description: "Built-in tools to help maintain SOC2, GDPR, and HIPAA compliance." }
+            { title: "Role-Based Permissions", description: "Control who can view, edit, or manage projects with Owner, Admin, and Member roles." },
+            { title: "Activity Tracking", description: "Monitor team activity with comprehensive feeds showing all task updates." },
+            { title: "Team Management", description: "Invite members, assign roles, and organize your growing workforce." }
         ],
-        description: "Large organizations face unique challenges in alignment and communication. CollabSpace Enterprise provides the robust infrastructure and governance needed to keep thousands of employees moving in the same direction. Our enterprise-grade security and API-first approach ensure we fit perfectly into your existing tech stack."
+        description: "Growing organizations need clear structure and accountability. CollabWeb provides the role-based access control and activity tracking needed to keep your team moving in the same direction. Our intuitive interface ensures everyone stays aligned."
     },
     "education": {
         title: "Education & Internships",
-        subtitle: "Empower the next generation with professional-grade tools in a collaborative learning environment.",
+        subtitle: "Give students hands-on experience with professional project management tools.",
         icon: <FaGraduationCap className="text-6xl text-blue-500" />,
         features: [
-            { title: "Collaborative Classrooms", description: "Create shared workspaces for group projects and peer reviews." },
-            { title: "Internship Management", description: "Onboard and mentor interns with structured tasks and feedback loops." },
-            { title: "Resource Libraries", description: "Centralize course materials and student submissions in one secure place." }
+            { title: "Collaborative Workspaces", description: "Create shared project boards for group assignments and team projects." },
+            { title: "Internship Management", description: "Onboard interns with organized task boards and clear responsibilities." },
+            { title: "Learning Environment", description: "Help students experience professional workflows in a supportive setting." }
         ],
-        description: "Bridge the gap between the classroom and the workplace. By using CollabSpace in educational settings, students gain hands-on experience with the same tools used by top industry professionals. Our internship solutions specifically focus on mentorship and skill-building, allowing organizations to nurture talent effectively."
+        description: "Bridge the gap between the classroom and the workplace. By using CollabWeb in educational settings, students gain hands-on experience with real project management workflows. Perfect for group projects, capstone assignments, and internship programs."
     },
     "agencies": {
-        title: "Agency Powerhouse",
-        subtitle: "Manage multiple clients, tight deadlines, and creative workflows with surgical precision.",
+        title: "Agency Workspace",
+        subtitle: "Manage multiple projects and keep client work organized in one clear workspace.",
         icon: <FaBriefcase className="text-6xl text-blue-500" />,
         features: [
-            { title: "Client Guest Access", description: "Invite clients into specific projects for transparent approvals and feedback." },
-            { title: "Time Tracking & Invoicing", description: "Built-in tools to ensure every billable hour is accurately accounted for." },
-            { title: "Multi-Project Overview", description: "Switch between client accounts and project boards in milliseconds." }
+            { title: "Project Organization", description: "Create separate project boards for each client to keep work clearly organized." },
+            { title: "Team Collaboration", description: "Assign team members to projects and track progress with activity feeds." },
+            { title: "Multi-Project View", description: "Switch between different project boards quickly and efficiently." }
         ],
-        description: "Agencies live and die by their ability to juggle competing priorities. CollabSpace for Agencies provides a centralized hub for all client work, eliminating the need for disjointed email threads and fragmented task lists. Increase your agency's billable efficiency and improve client satisfaction with world-class project transparency."
+        description: "Agencies thrive on organization and clarity. CollabWeb provides a centralized hub for all your project work, eliminating scattered task lists and keeping every project visible. Keep your team aligned and your projects on track."
     }
 };
 
@@ -104,13 +104,13 @@ const SolutionDetail = () => {
                             <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center text-brand group-hover/item:bg-brand group-hover/item:text-white transition-colors">
                                 <FaCheckCircle />
                             </div>
-                            <span className="text-lg font-bold">Real-time collaborative editing</span>
+                            <span className="text-lg font-bold">Real-time collaboration features</span>
                         </div>
                         <div className="flex items-center gap-5 text-text-primary group/item transition-all">
                             <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center text-brand group-hover/item:bg-brand group-hover/item:text-white transition-colors">
                                 <FaCheckCircle />
                             </div>
-                            <span className="text-lg font-bold">Custom workflows and automations</span>
+                            <span className="text-lg font-bold">Role-based access control</span>
                         </div>
                      </div>
                 </div>

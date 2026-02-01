@@ -78,7 +78,7 @@ const RequestDemo = () => {
                             <FaUsers className="text-green-500 text-2xl" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-bold text-text-primary mb-2 group-hover:text-green-500 transition-colors">Team-Wide Integration</h3>
+                            <h3 className="text-2xl font-bold text-text-primary mb-2 group-hover:text-green-500 transition-colors">Team Onboarding</h3>
                             <p className="text-text-secondary font-medium leading-relaxed">Learn how to onboard your entire team seamlessly and maximize adoption from day one.</p>
                         </div>
                     </div>
@@ -88,7 +88,7 @@ const RequestDemo = () => {
                         </div>
                         <div>
                             <h3 className="text-2xl font-bold text-text-primary mb-2 group-hover:text-purple-500 transition-colors">Feature Deep Dives</h3>
-                            <p className="text-text-secondary font-medium leading-relaxed">Explore advanced automations, reporting dashboards, and enterprise-grade security features.</p>
+                            <p className="text-text-secondary font-medium leading-relaxed">Explore task management, role-based permissions, and collaboration features in depth.</p>
                         </div>
                     </div>
                 </div>
@@ -148,7 +148,7 @@ const RequestDemo = () => {
                                 <label className="text-xs font-black text-text-secondary uppercase tracking-widest pl-1">Main Interest</label>
                                 <select name="interests" value={formData.interests} onChange={handleChange} className="w-full bg-brand-dark border border-brand-border rounded-2xl p-4 text-text-primary focus:border-brand focus:ring-4 focus:ring-brand/10 outline-none transition-all cursor-pointer font-bold appearance-none">
                                     <option className="bg-brand-light">General Collaboration</option>
-                                    <option className="bg-brand-light">Advanced Automation</option>
+                                    <option className="bg-brand-light">Task Management</option>
                                     <option className="bg-brand-light">Enterprise Security</option>
                                     <option className="bg-brand-light">Detailed Analytics</option>
                                 </select>

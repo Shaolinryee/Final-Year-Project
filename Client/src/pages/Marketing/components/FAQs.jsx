@@ -8,7 +8,7 @@ const FAQs = () => {
     const questions = [
         {
             q: "How secure is my data?",
-            a: "We use bank-level AES-256 encryption for all data at rest and TLS for data in transit. Your project information is stored on SOC2-compliant secure cloud servers with multi-factor authentication enforced for all accounts."
+            a: "We take security seriously. Your data is encrypted and stored securely. We use role-based access control (RBAC) to ensure only authorized team members can access specific projects and tasks."
         },
         {
             q: "Can I cancel or change plans anytime?",
@@ -16,15 +16,15 @@ const FAQs = () => {
         },
         {
             q: "Do you offer team training or onboarding?",
-            a: "Yes! We provide comprehensive onboarding resources, including video tutorials, live webinars, and documentation. For Enterprise plans, we offer dedicated customer success managers to ensure your team is set for success."
+            a: "Yes! We provide comprehensive onboarding resources, including documentation and tutorials to help your team get started quickly. Our support team is also available via email to assist with any questions."
         },
         {
-            q: "What tools does CollabWeb integrate with?",
-            a: "CollabWeb features native integrations with Slack, Google Drive, Microsoft Teams, GitHub, and many more. We also offer a robust API and Zapier support for custom automation needs."
+            q: "What collaboration features are included?",
+            a: "CollabWeb includes real-time collaboration features such as task comments, file attachments, activity tracking, notifications, and team invitations. All team members can see updates instantly."
         },
         {
             q: "Is there a free version for small teams?",
-            a: "We offer a 'Forever Free' tier for small teams and individuals that includes all essential project management features. You can scale to our Standard plan as your team grows."
+            a: "We offer a 'Forever Free' tier for small teams and individuals that includes all essential project management features including Kanban boards, task management, and comments. You can scale to our Standard plan as your team grows."
         }
     ];
 

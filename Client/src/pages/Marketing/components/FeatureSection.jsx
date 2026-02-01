@@ -11,19 +11,19 @@ const FeatureSection = () => {
     const features = [
         {
             title: "Organize work visually",
-            description: "Drag tasks across columns and watch your team move faster.",
+            description: "Drag tasks across columns with intuitive Kanban boards designed for clarity.",
             image: HeroImage,
             link: "/features"
         },
         {
-            title: "Plan with precision",
-            description: "Timeline views show dependencies and keep schedules honest.",
+            title: "Role-based access control",
+            description: "Define who can view, edit, or manage projects with Owner, Admin, and Member roles.",
             image: Feature3,
             link: "/features"
         },
         {
-            title: "Advanced reporting",
-            description: "Generate insights and track team performance with detailed analytics.",
+            title: "Real-time activity tracking",
+            description: "Stay informed with activity feeds and notifications for every task update.",
             image: Feature1,
             link: "/features"
         }
@@ -45,7 +45,7 @@ const FeatureSection = () => {
               Everything you need to <span className="text-brand">ship faster.</span>
             </h2>
             <p className="max-w-3xl mx-auto text-xl text-text-secondary font-medium leading-relaxed">
-              Kanban boards, timelines, automations, and reporting—all built directly into one intuitive workspace designed for maximum team velocity.
+              Kanban boards, role-based permissions, and real-time collaboration—all built directly into one intuitive workspace designed for team clarity.
             </p>
           </div>
 

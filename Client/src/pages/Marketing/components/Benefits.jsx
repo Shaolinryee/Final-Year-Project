@@ -7,19 +7,19 @@ const Benefits = () => {
     const benefits = [
         {
             title: "Boost Productivity",
-            description: "Reduce time spent on manual tracking and increase team efficiency with optimized task flows.",
+            description: "Streamline your workflow with visual Kanban boards, task comments, and file attachments all in one place.",
             icon: <FaRocket className="text-3xl text-blue-500" />,
             link: "/features"
         },
         {
-            title: "Enterprise-Grade Security",
-            description: "Your data remains private and protected with advanced encryption and roles-based access control.",
+            title: "Team Access Control",
+            description: "Manage permissions with role-based access control. Define Owners, Admins, and Members for every project.",
             icon: <FaShieldAlt className="text-3xl text-blue-500" />,
             link: "/features"
         },
         {
-            title: "Seamless Integration",
-            description: "Connect with your favorite tools and platforms without friction using our robust API and marketplace.",
+            title: "Real-time Collaboration",
+            description: "Work together seamlessly with instant updates, activity feeds, and email notifications for your team.",
             icon: <FaExchangeAlt className="text-3xl text-blue-500" />,
             link: "/features"
         }
@@ -88,12 +88,12 @@ const Benefits = () => {
                             <FaRocket className="text-green-500" />
                         </div>
                         <div>
-                            <p className="text-text-primary font-bold text-xl">250% Increase</p>
-                            <p className="text-text-primary opacity-50 text-xs font-bold uppercase tracking-wider">In team velocity</p>
+                            <p className="text-text-primary font-bold text-xl">Clear Workflows</p>
+                            <p className="text-text-primary opacity-50 text-xs font-bold uppercase tracking-wider">For growing teams</p>
                         </div>
                     </div>
                     <p className="text-text-primary opacity-60 text-sm italic">
-                        "Since adopting CollabWeb, our engineering cycles have shortened significantly. It's the engine behind our growth."
+                        "CollabWeb gives us a single source of truth for all our projects. The Kanban boards keep everyone aligned."
                     </p>
                 </div>
             </div>

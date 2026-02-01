@@ -3,9 +3,9 @@ import Price from "../../../assets/HeroImage.jpg";
 
 const Proof = () => {
     const stats = [
-        { label: "Active teams collaborating", value: "50K+" },
-        { label: "Tasks completed monthly", value: "2M+" },
-        { label: "Uptime guarantee", value: "99.9%" }
+        { label: "Teams using CollabWeb", value: "Growing" },
+        { label: "Tasks managed daily", value: "Thousands" },
+        { label: "Platform availability", value: "99%+" }
     ];
 
   return (
@@ -39,9 +39,9 @@ const Proof = () => {
                         {[1,2,3,4,5].map(i => <div key={i} className="w-3 h-3 bg-blue-500 rounded-full"></div>)}
                     </div>
                     <p className="text-text-primary text-lg font-medium leading-relaxed italic">
-                        "CollabWeb has become the backbone of our operations. The scale it handles while maintaining speed is truly impressive."
+                        "CollabWeb keeps our projects organized and our team aligned. The Kanban boards are exactly what we needed."
                     </p>
-                    <p className="text-text-primary opacity-50 text-sm mt-4 font-bold uppercase tracking-wider">— Engineering Lead, GlobalScale</p>
+                    <p className="text-text-primary opacity-50 text-sm mt-4 font-bold uppercase tracking-wider">— Team Lead</p>
                 </div>
             </div>
           </div>

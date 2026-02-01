@@ -17,7 +17,7 @@ const HeroSection = () => {
             <div className="flex flex-col gap-8 text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand/5 border border-brand-border rounded-full w-fit">
                 <span className="w-2 h-2 bg-brand rounded-full animate-pulse"></span>
-                <span className="text-xs font-black text-text-primary uppercase tracking-wider">New: AI-Powered Workflows</span>
+                <span className="text-xs font-black text-text-primary uppercase tracking-wider">Simple & Powerful Task Management</span>
               </div>
               
               <h1 className="text-5xl md:text-7xl font-black text-text-primary leading-[1.1]">
@@ -26,7 +26,7 @@ const HeroSection = () => {
               </h1>
               
               <p className="text-xl text-text-secondary leading-relaxed max-w-xl font-medium">
-                CollabWeb brings your team's work into focus. Manage projects, track tasks, and collaborate in real time with enterprise-grade precision and a minimalist heart.
+                CollabSpace brings your team's work into focus. Manage projects, organize tasks, and collaborate with role-based permissions—all in one clean, intuitive workspace.
               </p>
 
               <div className="flex flex-wrap gap-5 pt-4">
@@ -54,7 +54,7 @@ const HeroSection = () => {
                         </div>
                     ))}
                  </div>
-                 <p className="text-sm text-text-secondary font-bold">Joined by <span className="text-text-primary">10k+ teams</span> this month</p>
+                 <p className="text-sm text-text-secondary font-bold">Trusted by <span className="text-text-primary">growing teams</span> worldwide</p>
               </div>
             </div>
 
@@ -71,8 +71,8 @@ const HeroSection = () => {
                     <div className="absolute bottom-8 left-8 right-8 p-8 bg-brand-light/20 backdrop-blur-xl border border-brand-border/20 rounded-3xl shadow-2xl">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-text-primary font-black text-lg">Project Velocity</p>
-                                <p className="text-sm text-text-secondary font-bold opacity-70">Increased by 45% this week</p>
+                                <p className="text-text-primary font-black text-lg">Task Progress</p>
+                                <p className="text-sm text-text-secondary font-bold opacity-70">12 of 18 tasks completed</p>
                             </div>
                             <div className="h-2 w-32 bg-brand/20 rounded-full overflow-hidden">
                                 <div className="h-full w-2/3 bg-brand shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>

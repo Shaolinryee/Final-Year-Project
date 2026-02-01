@@ -16,7 +16,7 @@ const MoveFaster = () => {
                 Ready to move <span className="text-blue-500">faster?</span>
             </h2>
             <p className="max-w-2xl mx-auto text-xl text-text-primary opacity-60 mb-12">
-                Join thousands of high-velocity teams shipping better work every single day. No complicated setup, just pure productivity.
+                Join teams getting organized and delivering better work every day. Simple setup, clear workflows, real results.
             </p>
             <div className="flex flex-col sm:flex-row gap-5">
                 <Link

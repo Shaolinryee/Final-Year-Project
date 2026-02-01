@@ -13,9 +13,9 @@ const Pricing = () => {
       features: [
         "Up to 3 projects",
         "Unlimited tasks",
-        "Basic collaboration",
-        "Community support",
-        "Standard file storage"
+        "Kanban board view",
+        "Task comments & attachments",
+        "Email notifications"
       ],
       buttonText: "Start for Free",
       link: "/signup",
@@ -27,11 +27,11 @@ const Pricing = () => {
       description: "Ideal for growing teams that need more power.",
       features: [
         "Unlimited projects",
-        "Advanced task tracking",
+        "Role-based access control",
         "Priority support",
-        "Slack integration",
-        "50GB storage",
-        "Custom status labels"
+        "Activity tracking",
+        "File attachments",
+        "Custom task labels"
       ],
       buttonText: "Get Started",
       link: "/signup",
@@ -43,11 +43,11 @@ const Pricing = () => {
       description: "Full governance and security for large organizations.",
       features: [
         "Unlimited everything",
-        "Direct account manager",
-        "SSO & SAML integration",
-        "Audit logs & reporting",
-        "Unlimited storage",
-        "24/7 Phone support"
+        "Dedicated account manager",
+        "Advanced RBAC permissions",
+        "Activity audit logs",
+        "Priority email support",
+        "Custom onboarding"
       ],
       buttonText: "Contact Sales",
       link: "/request-demo",
@@ -139,7 +139,7 @@ const Pricing = () => {
 
         {/* Trust Footer */}
         <div className="mt-24 pt-16 border-t border-brand-border text-center">
-            <p className="text-text-primary opacity-40 text-sm mb-12 italic">Join 50,000+ teams who scale faster with CollabWeb</p>
+            <p className="text-text-primary opacity-40 text-sm mb-12 italic">Trusted by growing teams worldwide</p>
             <div className="flex flex-wrap justify-center gap-12 opacity-20 grayscale pointer-events-none filter brightness-50 dark:brightness-100 dark:invert-0 invert">
                 <div className="h-6 w-24 bg-text-primary rounded"></div>
                 <div className="h-6 w-32 bg-text-primary rounded"></div>

@@ -39,31 +39,34 @@ const guideData = {
         `
     },
     "custom-workflows": {
-        title: "Configuring custom workflows",
-        category: "Advanced",
+        title: "Creating projects and tasks",
+        category: "Tasks",
         duration: "12 min read",
         content: `
-            Every team has a unique way of working. CollabSpace allows you to customize your workflow to match your specific processes.
+            CollabWeb makes it easy to organize your work with projects and tasks.
 
-            ### Custom Task Statuses
-            Move beyond simple "To Do" and "Done". Create custom columns like "In Review", "QA", or "Pending Approval" to reflect your actual stage gates.
+            ### Creating Projects
+            Click the "+" button in the sidebar to create a new project. Give it a name and description to help your team understand its purpose.
 
-            ### Automated Transitions
-            Set up rules to automatically move cards when certain conditions are met, such as moving a task to "QA" as soon as a PR is linked.
+            ### Managing Tasks
+            Add tasks to your project's Kanban board. Drag and drop them between columns like "To Do", "In Progress", and "Done" to track progress.
+
+            ### Task Details
+            Add descriptions, set priorities, attach files, and leave comments on tasks to keep all relevant information in one place.
         `
     },
-    "integrations": {
-        title: "Integrating with third-party apps",
-        category: "Integrations",
+    "notifications": {
+        title: "Understanding notifications and activity",
+        category: "Features",
         duration: "10 min read",
         content: `
-            CollabSpace works best when it's connected to the tools you already use every day.
+            Stay informed about what's happening in your workspace with CollabWeb's notification system.
 
-            ### Slack Integration
-            Get real-time updates on task changes directly in your Slack channels.
+            ### Activity Feeds
+            See a chronological list of all actions taken in your projects, from task creation to status changes.
 
-            ### GitHub & GitLab
-            Link your code repositories to track development progress alongside your project tasks.
+            ### Email Notifications
+            Receive email updates when you're assigned to a task, mentioned in a comment, or when tasks you're watching are updated.
         `
     }
 };

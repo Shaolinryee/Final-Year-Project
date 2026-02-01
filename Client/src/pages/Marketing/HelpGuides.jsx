@@ -8,8 +8,8 @@ const HelpGuides = () => {
   const guides = [
     { slug: "setting-up-workspace", title: "Setting up your first workspace", duration: "5 min read", category: "Basics" },
     { slug: "managing-roles", title: "Inviting team members and managing roles", duration: "8 min read", category: "Team" },
-    { slug: "custom-workflows", title: "Configuring custom workflows", duration: "12 min read", category: "Advanced" },
-    { slug: "integrations", title: "Integrating with third-party apps", duration: "10 min read", category: "Integrations" }
+    { slug: "custom-workflows", title: "Creating projects and tasks", duration: "12 min read", category: "Tasks" },
+    { slug: "notifications", title: "Understanding notifications and activity", duration: "10 min read", category: "Features" }
   ];
 
   return (

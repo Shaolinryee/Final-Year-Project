@@ -2,45 +2,45 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '../../layout/MainLayout';
 import JoinBeta from './components/JoinBeta';
-import { FaTasks, FaUsers, FaRobot, FaLock, FaChartLine, FaMobileAlt } from 'react-icons/fa';
+import { FaTasks, FaUsers, FaLock, FaChartLine, FaMobileAlt } from 'react-icons/fa';
 
 const Features = () => {
     const mainFeatures = [
         {
-            title: "Advanced Task Management",
-            description: "Break down complex projects into manageable tasks. Use subtasks, dependencies, and multiple progress views to keep everything on track.",
+            title: "Visual Task Management",
+            description: "Organize your work with intuitive Kanban boards. Drag and drop tasks across columns to track progress from start to completion.",
             icon: <FaTasks className="text-4xl text-blue-500" />,
-            details: ["Custom Task Statuses", "File Attachments", "Priority Labels", "Time Tracking"]
+            details: ["Kanban Board View", "File Attachments", "Priority Labels", "Task Comments"]
         },
         {
             title: "Real-time Collaboration",
-            description: "Bring your team together in a unified workspace. Communicate directly on tasks, mention colleagues, and see changes as they happen.",
+            description: "Bring your team together in a unified workspace. Comment on tasks, mention colleagues, and see updates as they happen.",
             icon: <FaUsers className="text-4xl text-blue-500" />,
-            details: ["Instant Mentions", "Live Updates", "Shared Workspaces", "Shared Calendars"]
+            details: ["Task Comments", "Team Invitations", "Activity Feeds", "Email Notifications"]
         },
         {
-            title: "Powerful Automations",
-            description: "Reduce busywork with our automation engine. Set up custom triggers and actions to move cards, send notifications, and sync data seamlessly.",
-            icon: <FaRobot className="text-4xl text-blue-500" />,
-            details: ["Dynamic Triggers", "Auto-Transitions", "Slack/Email Alerts", "Custom Logic"]
-        },
-        {
-            title: "Enterprise-Grade Security",
-            description: "Your data is our top priority. Benefit from industry-leading security protocols, roles-based access control, and full data encryption.",
+            title: "Role-Based Access Control",
+            description: "Control who can do what in your projects. Assign Owner, Admin, or Member roles to keep your workspace organized and secure.",
             icon: <FaLock className="text-4xl text-blue-500" />,
-            details: ["2FA & SSO", "RBAC Permissions", "Data Encryption", "Compliance Ready"]
+            details: ["Owner Permissions", "Admin Controls", "Member Access", "Project Privacy"]
         },
         {
-            title: "Insights & Analytics",
-            description: "Visualize your team's performance. Our built-in reporting tools provide deep insights into velocity, bottlenecks, and project health.",
+            title: "Activity Tracking",
+            description: "Stay informed with comprehensive activity feeds. Know who did what, when, with full visibility into task updates and changes.",
             icon: <FaChartLine className="text-4xl text-blue-500" />,
-            details: ["Velocity Charts", "Burn-down Reports", "Resource Planning", "Custom Dashboards"]
+            details: ["Activity Timeline", "Task History", "User Actions", "Real-time Updates"]
         },
         {
-            title: "Mobile Accessibility",
-            description: "Stay connected from anywhere. Our mobile apps for iOS and Android ensure you never miss a beat, even when you're on the move.",
+            title: "Team Management",
+            description: "Build and manage your team with ease. Invite members via email, assign roles, and organize your workforce efficiently.",
+            icon: <FaUsers className="text-4xl text-blue-500" />,
+            details: ["Email Invitations", "Role Assignment", "Member Directory", "Team Dashboard"]
+        },
+        {
+            title: "Mobile-Responsive Design",
+            description: "Access your projects from any device. Our responsive web interface works seamlessly on desktop, tablet, and mobile browsers.",
             icon: <FaMobileAlt className="text-4xl text-blue-500" />,
-            details: ["Native Apps", "Offline Mode", "Push Notifications", "Seamless Sync"]
+            details: ["Responsive Web App", "Cross-browser Support", "Touch-friendly UI", "Fast Loading"]
         }
     ];
 
@@ -52,7 +52,7 @@ const Features = () => {
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-7xl font-extrabold text-text-primary mb-8 leading-tight">Everything you need to <span className="text-brand">collaborate faster.</span></h1>
             <p className="text-xl text-text-primary opacity-70 mb-12 font-medium">
-                CollabWeb combines task management, team collaboration, and powerful automation in one intuitive platform designed for modern teams.
+                CollabWeb combines task management, team collaboration, and role-based permissions in one intuitive platform designed for modern teams.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
                  <Link to="/signup" className="bg-brand hover:opacity-90 text-white font-bold py-4 px-10 rounded-xl transition-all shadow-xl shadow-brand/20 active:scale-95">Start for Free</Link>
@@ -99,15 +99,15 @@ const Features = () => {
                         <div className="flex gap-4 p-6 bg-brand-light rounded-2xl border border-brand-border shadow-sm">
                             <div className="w-10 h-10 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center shrink-0 font-bold">1</div>
                             <div>
-                                <h4 className="text-text-primary font-bold">Multiple Views</h4>
-                                <p className="text-sm text-text-secondary font-medium">Switch between Board, Timeline, Calendar, and List views in one click.</p>
+                                <h4 className="text-text-primary font-bold">Kanban Boards</h4>
+                                <p className="text-sm text-text-secondary font-medium">Visualize your workflow with drag-and-drop task management.</p>
                             </div>
                         </div>
                         <div className="flex gap-4 p-6 bg-brand-light rounded-2xl border border-brand-border shadow-sm">
                             <div className="w-10 h-10 bg-brand/20 text-brand rounded-full flex items-center justify-center shrink-0 font-bold">2</div>
                             <div>
-                                <h4 className="text-text-primary font-bold">Custom Fields</h4>
-                                <p className="text-sm text-text-secondary font-medium">Track any piece of information with versatile custom fields for any task.</p>
+                                <h4 className="text-text-primary font-bold">Role-Based Permissions</h4>
+                                <p className="text-sm text-text-secondary font-medium">Control access with Owner, Admin, and Member roles for every project.</p>
                             </div>
                         </div>
                     </div>

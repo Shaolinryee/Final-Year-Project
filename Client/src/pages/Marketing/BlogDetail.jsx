@@ -16,8 +16,8 @@ const blogPosts = {
             At CollabSpace, we've spent years studying how the best teams work. What we've found is that it's rarely about working more hours; it's about reducing the 'work about work'—the endless meetings, Status checks, and fragmented communication that eat away at your day.
             
             ### Key Strategies for Streamlining
-            1. **Centralize Communication**: Stop jumping between email, Slack, and project boards. Keep the conversation where the work happens.
-            2. **Automate Routine Tasks**: Use built-in automations to handle repetitive tasks like moving cards or sending notifications.
+            1. **Centralize Communication**: Keep the conversation where the work happens with task comments and activity feeds.
+            2. **Visualize Your Workflow**: Use Kanban boards to see exactly where work stands at any moment.
             3. **Limit Work in Progress**: Focusing on fewer tasks at once actually helps teams move faster overall.
         `,
         image: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
