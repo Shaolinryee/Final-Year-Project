@@ -98,8 +98,11 @@ const InviteMemberModal = ({
             disabled={loading}
           >
             <option value="member">Member - Can view and manage tasks</option>
-            <option value="owner">Owner - Full project control</option>
+            <option value="admin">Admin - Can manage members and settings</option>
           </select>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Only the project creator has the Owner role.
+          </p>
         </div>
 
         {/* Actions */}

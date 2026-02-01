@@ -14,6 +14,7 @@ import {
   usersApi,
 } from "../../services/api";
 import { TaskItemSkeleton, Button } from "../../components/ui";
+import { getUserRole, isOwner as checkIsOwner, isAdmin as checkIsAdmin } from "../../utils/permissions";
 
 // Project Context
 const ProjectContext = createContext(null);
@@ -60,6 +61,17 @@ const ProjectLayout = () => {
     const membership = members.find((m) => m.userId === currentUser.id);
     return membership?.role === "owner";
   }, [currentUser, members]);
+
+  // Get current user's role in this project
+  const userRole = useMemo(() => {
+    if (!currentUser || members.length === 0) return null;
+    return getUserRole(members, currentUser.id);
+  }, [currentUser, members]);
+
+  // Check if current user is admin
+  const isAdmin = useMemo(() => {
+    return checkIsAdmin(userRole);
+  }, [userRole]);
 
   // Fetch current user
   useEffect(() => {
@@ -138,6 +150,8 @@ const ProjectLayout = () => {
       activities,
       currentUser,
       isOwner,
+      isAdmin,
+      userRole,
       projectId,
       // Loading states
       projectLoading,
@@ -166,6 +180,8 @@ const ProjectLayout = () => {
       activities,
       currentUser,
       isOwner,
+      isAdmin,
+      userRole,
       projectId,
       projectLoading,
       tasksLoading,

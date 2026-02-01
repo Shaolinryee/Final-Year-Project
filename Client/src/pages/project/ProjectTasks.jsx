@@ -23,6 +23,13 @@ import {
   TaskItemSkeleton,
 } from "../../components/ui";
 import { TaskItem, TaskFormModal } from "../../components/tasks";
+import {
+  canCreateTask,
+  canEditAnyTask,
+  canDeleteTask,
+  canAssignTasks,
+  canUpdateTaskStatus,
+} from "../../utils/permissions";
 
 const ProjectTasks = () => {
   const navigate = useNavigate();
@@ -34,7 +41,15 @@ const ProjectTasks = () => {
     setTasks,
     fetchTasks,
     projectId,
+    userRole,
+    currentUser,
   } = useProject();
+
+  // Permission checks
+  const canCreate = canCreateTask(userRole);
+  const canEditAny = canEditAnyTask(userRole);
+  const canDelete = canDeleteTask(userRole);
+  const canAssign = canAssignTasks(userRole);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState("all");
@@ -193,12 +208,14 @@ const ProjectTasks = () => {
             Manage tasks for {project?.name}
           </p>
         </div>
-        <Button
-          onClick={handleCreate}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
-          Add Task
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={handleCreate}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Add Task
+          </Button>
+        )}
       </div>
 
       {/* Error */}
@@ -271,8 +288,8 @@ const ProjectTasks = () => {
               ? "Try selecting a different filter"
               : "Create your first task to get started"
           }
-          actionLabel={statusFilter === "all" ? "Add Task" : undefined}
-          onAction={statusFilter === "all" ? handleCreate : undefined}
+          actionLabel={statusFilter === "all" && canCreate ? "Add Task" : undefined}
+          onAction={statusFilter === "all" && canCreate ? handleCreate : undefined}
         />
       ) : viewMode === "list" ? (
         <div className="space-y-3">
@@ -281,10 +298,12 @@ const ProjectTasks = () => {
               key={task.id}
               task={task}
               members={members}
-              onStatusChange={handleStatusChange}
-              onEdit={handleEdit}
-              onDelete={handleDeleteClick}
-              onAssign={handleAssign}
+              currentUserId={currentUser?.id}
+              userRole={userRole}
+              onStatusChange={canUpdateTaskStatus(userRole, task, currentUser?.id) ? handleStatusChange : undefined}
+              onEdit={canEditAny ? handleEdit : undefined}
+              onDelete={canDelete ? handleDeleteClick : undefined}
+              onAssign={canAssign ? handleAssign : undefined}
               onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
             />
           ))}
@@ -297,10 +316,12 @@ const ProjectTasks = () => {
               key={task.id}
               task={task}
               members={members}
-              onStatusChange={handleStatusChange}
-              onEdit={handleEdit}
-              onDelete={handleDeleteClick}
-              onAssign={handleAssign}
+              currentUserId={currentUser?.id}
+              userRole={userRole}
+              onStatusChange={canUpdateTaskStatus(userRole, task, currentUser?.id) ? handleStatusChange : undefined}
+              onEdit={canEditAny ? handleEdit : undefined}
+              onDelete={canDelete ? handleDeleteClick : undefined}
+              onAssign={canAssign ? handleAssign : undefined}
               onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
               compact
             />

@@ -8,6 +8,7 @@ import { useProject } from "./ProjectLayout";
 import { membersApi, invitationsApi } from "../../services/api";
 import { Button, Alert, EmptyState } from "../../components/ui";
 import { MemberRow, InviteMemberModal, PendingInvites } from "../../components/members";
+import { canInviteMembers, canChangeRoles, canRemoveMember } from "../../utils/permissions";
 
 const ProjectMembers = () => {
   const {
@@ -17,6 +18,8 @@ const ProjectMembers = () => {
     membersLoading,
     invitationsLoading,
     isOwner,
+    userRole,
+    currentUser,
     projectId,
     setMembers,
     setInvitations,
@@ -27,6 +30,10 @@ const ProjectMembers = () => {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [error, setError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+
+  // Permission checks
+  const canInvite = canInviteMembers(userRole);
+  const canManageRoles = canChangeRoles(userRole);
 
   // Handlers
   const handleInvite = async ({ email, role }) => {
@@ -118,7 +125,7 @@ const ProjectMembers = () => {
             {members.length} member{members.length !== 1 ? "s" : ""} in {project?.name}
           </p>
         </div>
-        {isOwner && (
+        {canInvite && (
           <Button
             onClick={() => setIsInviteOpen(true)}
             leftIcon={<UserPlus className="w-4 h-4" />}
@@ -138,6 +145,7 @@ const ProjectMembers = () => {
         <PendingInvites
           invitations={invitations}
           isOwner={isOwner}
+          canManage={canInvite}
           onRevoke={handleRevokeInvitation}
           onAccept={handleAcceptInvitation}
           onDecline={handleDeclineInvitation}
@@ -157,8 +165,8 @@ const ProjectMembers = () => {
           icon={Users}
           title="No members"
           description="Invite team members to collaborate on this project"
-          actionLabel={isOwner ? "Invite Member" : undefined}
-          onAction={isOwner ? () => setIsInviteOpen(true) : undefined}
+          actionLabel={canInvite ? "Invite Member" : undefined}
+          onAction={canInvite ? () => setIsInviteOpen(true) : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -166,7 +174,10 @@ const ProjectMembers = () => {
             <MemberRow
               key={member.userId}
               member={member}
-              isOwner={isOwner}
+              currentUserId={currentUser?.id}
+              currentUserRole={userRole}
+              canChangeRoles={canManageRoles}
+              canRemove={canRemoveMember(userRole, member.role)}
               onRoleChange={handleRoleChange}
               onRemove={handleRemoveMember}
             />

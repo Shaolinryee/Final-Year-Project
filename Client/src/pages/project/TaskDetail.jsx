@@ -3,7 +3,7 @@
  * Opens as a slide-in panel from the right side
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   X,
@@ -35,6 +35,14 @@ import { tasksApi } from "../../services/api";
 import { Button, Alert, StatusPill, ConfirmDialog } from "../../components/ui";
 import { TaskFormModal } from "../../components/tasks";
 import { ActivityFeed } from "../../components/activity";
+import {
+  canEditAnyTask,
+  canDeleteTask,
+  canAssignTasks,
+  canUpdateTaskStatus,
+  canAddComments,
+  canAddAttachments,
+} from "../../utils/permissions";
 
 const statusConfig = {
   todo: {
@@ -80,10 +88,22 @@ const TaskDetail = () => {
     setTasks,
     fetchTasks,
     projectId,
+    userRole,
+    currentUser,
   } = useProject();
 
   // Find task from context
   const task = tasks.find((t) => t.id === taskId);
+
+  // Permission checks
+  const permissions = useMemo(() => ({
+    canEdit: canEditAnyTask(userRole),
+    canDelete: canDeleteTask(userRole),
+    canAssign: canAssignTasks(userRole),
+    canChangeStatus: canUpdateTaskStatus(userRole, task, currentUser?.id),
+    canComment: canAddComments(userRole),
+    canAttach: canAddAttachments(userRole),
+  }), [userRole, task, currentUser?.id]);
 
   // Local state
   const [loading, setLoading] = useState(!task);
@@ -109,11 +129,11 @@ const TaskDetail = () => {
   const fileInputRef = useRef(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
-  // Get current user info
-  const currentUserId = getCurrentUserId();
+  // Get current user info for comments (using local mock store)
+  const localCurrentUserId = getCurrentUserId();
   const users = getUsersStore();
-  const currentUser = users.find((u) => u.id === currentUserId) || {
-    id: currentUserId,
+  const commentUser = users.find((u) => u.id === localCurrentUserId) || {
+    id: localCurrentUserId,
     name: "Current User",
     avatarUrl: null,
   };
@@ -303,9 +323,9 @@ const TaskDetail = () => {
       id: `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       taskId,
       projectId,
-      authorUserId: currentUser.id,
-      authorName: currentUser.name,
-      authorAvatarUrl: currentUser.avatarUrl,
+      authorUserId: commentUser.id,
+      authorName: commentUser.name,
+      authorAvatarUrl: commentUser.avatarUrl,
       content: newComment.trim(),
       createdAt: new Date().toISOString(),
     };
@@ -489,20 +509,24 @@ const TaskDetail = () => {
             <span className="text-sm text-text-secondary">{project?.name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsEditOpen(true)}
-              className="p-2 rounded-lg hover:bg-brand-dark/30 text-text-secondary hover:text-text-primary transition-colors"
-              title="Edit task"
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setIsDeleteOpen(true)}
-              className="p-2 rounded-lg hover:bg-rose-500/10 text-text-secondary hover:text-rose-400 transition-colors"
-              title="Delete task"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {permissions.canEdit && (
+              <button
+                onClick={() => setIsEditOpen(true)}
+                className="p-2 rounded-lg hover:bg-brand-dark/30 text-text-secondary hover:text-text-primary transition-colors"
+                title="Edit task"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+            {permissions.canDelete && (
+              <button
+                onClick={() => setIsDeleteOpen(true)}
+                className="p-2 rounded-lg hover:bg-rose-500/10 text-text-secondary hover:text-rose-400 transition-colors"
+                title="Delete task"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={handleClose}
               className="p-2 rounded-lg hover:bg-brand-dark/30 text-text-secondary hover:text-text-primary transition-colors"
@@ -530,7 +554,7 @@ const TaskDetail = () => {
 
               {/* Title */}
               <div className="mb-6">
-                {isEditing ? (
+                {isEditing && permissions.canEdit ? (
                   <input
                     type="text"
                     value={editedTitle}
@@ -540,9 +564,9 @@ const TaskDetail = () => {
                   />
                 ) : (
                   <h1
-                    className="text-xl font-semibold text-text-primary cursor-pointer hover:text-brand transition-colors"
-                    onClick={() => setIsEditing(true)}
-                    title="Click to edit"
+                    className={`text-xl font-semibold text-text-primary ${permissions.canEdit ? "cursor-pointer hover:text-brand" : ""} transition-colors`}
+                    onClick={() => permissions.canEdit && setIsEditing(true)}
+                    title={permissions.canEdit ? "Click to edit" : undefined}
                   >
                     {task.title}
                   </h1>
@@ -554,14 +578,18 @@ const TaskDetail = () => {
                 {/* Status Dropdown */}
                 <div className="relative">
                   <button
-                    onClick={() => setShowStatusMenu(!showStatusMenu)}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusCfg.bgColor} ${statusCfg.color}`}
+                    onClick={() => permissions.canChangeStatus && setShowStatusMenu(!showStatusMenu)}
+                    disabled={!permissions.canChangeStatus}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusCfg.bgColor} ${statusCfg.color} ${
+                      permissions.canChangeStatus ? "cursor-pointer" : "cursor-default opacity-70"
+                    }`}
+                    title={permissions.canChangeStatus ? "Change status" : "You cannot change this task's status"}
                   >
                     <StatusIcon className="w-4 h-4" />
                     {statusCfg.label}
-                    <ChevronDown className="w-4 h-4" />
+                    {permissions.canChangeStatus && <ChevronDown className="w-4 h-4" />}
                   </button>
-                  {showStatusMenu && (
+                  {showStatusMenu && permissions.canChangeStatus && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowStatusMenu(false)} />
                       <div className="absolute left-0 top-full mt-1 w-40 bg-brand-light rounded-lg shadow-lg border border-brand-border py-1 z-20">
@@ -589,13 +617,17 @@ const TaskDetail = () => {
                 {/* Priority Dropdown */}
                 <div className="relative">
                   <button
-                    onClick={() => setShowPriorityMenu(!showPriorityMenu)}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${priorityCfg.bgColor} ${priorityCfg.color}`}
+                    onClick={() => permissions.canEdit && setShowPriorityMenu(!showPriorityMenu)}
+                    disabled={!permissions.canEdit}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${priorityCfg.bgColor} ${priorityCfg.color} ${
+                      permissions.canEdit ? "cursor-pointer" : "cursor-default opacity-70"
+                    }`}
+                    title={permissions.canEdit ? "Change priority" : "You cannot change task priority"}
                   >
                     {priorityCfg.label}
-                    <ChevronDown className="w-4 h-4" />
+                    {permissions.canEdit && <ChevronDown className="w-4 h-4" />}
                   </button>
-                  {showPriorityMenu && (
+                  {showPriorityMenu && permissions.canEdit && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowPriorityMenu(false)} />
                       <div className="absolute left-0 top-full mt-1 w-32 bg-brand-light rounded-lg shadow-lg border border-brand-border py-1 z-20">
@@ -619,7 +651,7 @@ const TaskDetail = () => {
               {/* Description */}
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-text-secondary mb-2">Description</h3>
-                {isEditing ? (
+                {isEditing && permissions.canEdit ? (
                   <textarea
                     value={editedDescription}
                     onChange={(e) => setEditedDescription(e.target.value)}
@@ -629,16 +661,18 @@ const TaskDetail = () => {
                   />
                 ) : (
                   <div
-                    className="text-text-primary bg-brand-dark/30 rounded-lg p-4 min-h-[100px] cursor-pointer hover:bg-brand-dark/50 transition-colors"
-                    onClick={() => setIsEditing(true)}
+                    className={`text-text-primary bg-brand-dark/30 rounded-lg p-4 min-h-[100px] ${permissions.canEdit ? "cursor-pointer hover:bg-brand-dark/50" : ""} transition-colors`}
+                    onClick={() => permissions.canEdit && setIsEditing(true)}
                   >
                     {task.description || (
-                      <span className="text-text-secondary italic">Click to add description...</span>
+                      <span className="text-text-secondary italic">
+                        {permissions.canEdit ? "Click to add description..." : "No description"}
+                      </span>
                     )}
                   </div>
                 )}
 
-                {isEditing && (
+                {isEditing && permissions.canEdit && (
                   <div className="flex items-center gap-2 mt-3">
                     <Button
                       size="sm"
@@ -843,7 +877,7 @@ const TaskDetail = () => {
                     <div className="mb-4">
                       <div className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-brand/30 flex items-center justify-center text-xs font-medium text-brand flex-shrink-0">
-                          {getInitials(currentUser.name)}
+                          {getInitials(commentUser.name)}
                         </div>
                         <div className="flex-1">
                           <textarea
@@ -889,7 +923,7 @@ const TaskDetail = () => {
                                 <span className="text-xs text-text-secondary">
                                   {formatCommentTime(comment.createdAt)}
                                 </span>
-                                {comment.authorUserId === currentUser.id && (
+                                {comment.authorUserId === commentUser.id && (
                                   <button
                                     onClick={() => handleDeleteComment(comment.id)}
                                     className="p-1 rounded text-text-secondary hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all ml-auto"
@@ -938,8 +972,12 @@ const TaskDetail = () => {
                   <label className="text-xs text-text-secondary mb-1 block">Assignee</label>
                   <div className="relative">
                     <button
-                      onClick={() => setShowAssignMenu(!showAssignMenu)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark/30 hover:bg-brand-dark/50 transition-colors text-left"
+                      onClick={() => permissions.canAssign && setShowAssignMenu(!showAssignMenu)}
+                      disabled={!permissions.canAssign}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark/30 transition-colors text-left ${
+                        permissions.canAssign ? "hover:bg-brand-dark/50 cursor-pointer" : "cursor-default opacity-70"
+                      }`}
+                      title={permissions.canAssign ? "Change assignee" : "You cannot change task assignee"}
                     >
                       {assignee ? (
                         <>
@@ -956,10 +994,10 @@ const TaskDetail = () => {
                           <span className="text-sm text-text-secondary">Unassigned</span>
                         </>
                       )}
-                      <ChevronDown className="w-4 h-4 text-text-secondary" />
+                      {permissions.canAssign && <ChevronDown className="w-4 h-4 text-text-secondary" />}
                     </button>
 
-                    {showAssignMenu && (
+                    {showAssignMenu && permissions.canAssign && (
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setShowAssignMenu(false)} />
                         <div className="absolute left-0 top-full mt-1 w-full bg-brand-light rounded-lg shadow-lg border border-brand-border py-1 z-20 max-h-48 overflow-y-auto">

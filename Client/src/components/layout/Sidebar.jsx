@@ -18,13 +18,55 @@ import {
   Settings,
   BarChart3,
 } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { canViewSettings, getUserRole } from "../../utils/permissions";
+import { membersApi, usersApi } from "../../services/api";
 
 const Sidebar = ({ collapsed, onToggle }) => {
   const { projectId } = useParams();
   const location = useLocation();
   
+  // State for user role in current project
+  const [userRole, setUserRole] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  
   // Check if we're in a project context
   const isInProject = location.pathname.startsWith("/projects/") && projectId;
+
+  // Fetch current user and their role in the project
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!projectId) {
+        setUserRole(null);
+        return;
+      }
+      
+      try {
+        // Get current user
+        const { data: user } = await usersApi.getCurrent();
+        if (user) {
+          setCurrentUserId(user.id);
+          
+          // Get project members
+          const { data: members } = await membersApi.getByProject(projectId);
+          if (members) {
+            const role = getUserRole(members, user.id);
+            setUserRole(role);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        setUserRole(null);
+      }
+    };
+    
+    fetchUserRole();
+  }, [projectId]);
+
+  // Check if user can view settings (Owner only)
+  const canAccessSettings = useMemo(() => {
+    return canViewSettings(userRole);
+  }, [userRole]);
 
   const mainNavItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -35,13 +77,24 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { name: "Profile", path: "/profile", icon: User },
   ];
 
-  const projectNavItems = projectId ? [
-    { name: "Overview", path: `/projects/${projectId}/overview`, icon: Home },
-    { name: "Tasks", path: `/projects/${projectId}/tasks`, icon: ListTodo },
-    { name: "Members", path: `/projects/${projectId}/members`, icon: Users },
-    { name: "Activity", path: `/projects/${projectId}/activity`, icon: BarChart3 },
-    { name: "Settings", path: `/projects/${projectId}/settings`, icon: Settings },
-  ] : [];
+  // Build project nav items based on permissions
+  const projectNavItems = useMemo(() => {
+    if (!projectId) return [];
+    
+    const items = [
+      { name: "Overview", path: `/projects/${projectId}/overview`, icon: Home },
+      { name: "Tasks", path: `/projects/${projectId}/tasks`, icon: ListTodo },
+      { name: "Members", path: `/projects/${projectId}/members`, icon: Users },
+      { name: "Activity", path: `/projects/${projectId}/activity`, icon: BarChart3 },
+    ];
+    
+    // Only show Settings link to Owner
+    if (canAccessSettings) {
+      items.push({ name: "Settings", path: `/projects/${projectId}/settings`, icon: Settings });
+    }
+    
+    return items;
+  }, [projectId, canAccessSettings]);
 
   const NavItem = ({ item, showLabel = true }) => (
     <NavLink

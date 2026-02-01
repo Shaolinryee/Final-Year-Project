@@ -10,6 +10,7 @@ import { Button } from "../ui";
 const PendingInvites = ({
   invitations = [],
   isOwner = false,
+  canManage = false, // Owner or Admin can manage invitations
   onRevoke,
   onAccept,
   onDecline,
@@ -17,6 +18,9 @@ const PendingInvites = ({
   loading = false,
 }) => {
   const [processingId, setProcessingId] = useState(null);
+
+  // Use canManage if provided, fall back to isOwner for backward compatibility
+  const canManageInvitations = canManage || isOwner;
 
   if (invitations.length === 0) {
     return null;
@@ -108,8 +112,8 @@ const PendingInvites = ({
                       Accept
                     </Button>
                   </>
-                ) : isOwner ? (
-                  // Owner can revoke invitations
+                ) : canManageInvitations ? (
+                  // Owner/Admin can revoke invitations
                   <button
                     onClick={() => handleAction(onRevoke, invitation.id)}
                     disabled={loading || isProcessing}

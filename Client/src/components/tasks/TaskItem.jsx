@@ -16,6 +16,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { StatusPill, Button } from "../ui";
+import { canUpdateTaskStatus } from "../../utils/permissions";
 
 const statusConfig = {
   todo: {
@@ -46,6 +47,8 @@ const TaskItem = ({
   onAssign,
   onClick,
   members = [],
+  currentUserId,
+  userRole,
   loading = false,
   compact = false,
 }) => {
@@ -56,13 +59,18 @@ const TaskItem = ({
   const config = statusConfig[status] || statusConfig.todo;
   const StatusIcon = config.icon;
 
+  // Check if current user can update this task's status
+  const canChangeStatus = onStatusChange && canUpdateTaskStatus(userRole, task, currentUserId);
+
   const handleStatusClick = () => {
-    setShowStatusMenu(!showStatusMenu);
+    if (canChangeStatus) {
+      setShowStatusMenu(!showStatusMenu);
+    }
   };
 
   const handleStatusSelect = (newStatus) => {
     setShowStatusMenu(false);
-    if (newStatus !== status) {
+    if (newStatus !== status && onStatusChange) {
       onStatusChange(task.id, newStatus);
     }
   };
@@ -145,14 +153,19 @@ const TaskItem = ({
         <div className="relative">
           <button
             onClick={handleStatusClick}
-            disabled={loading}
-            className={`p-1 rounded-lg hover:bg-brand-dark/10 dark:hover:bg-white/10 transition-colors ${config.color}`}
+            disabled={loading || !canChangeStatus}
+            className={`p-1 rounded-lg transition-colors ${config.color} ${
+              canChangeStatus 
+                ? "hover:bg-brand-dark/10 dark:hover:bg-white/10 cursor-pointer" 
+                : "cursor-default opacity-70"
+            }`}
+            title={canChangeStatus ? "Change status" : "You cannot change this task's status"}
           >
             <StatusIcon className="w-5 h-5" />
           </button>
 
           {/* Status Dropdown */}
-          {showStatusMenu && (
+          {showStatusMenu && canChangeStatus && (
             <>
               <div
                 className="fixed inset-0 z-10"
@@ -195,20 +208,29 @@ const TaskItem = ({
             >
               {task.title}
             </h4>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={() => onEdit(task)}
-                className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-brand-dark/10 dark:hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onDelete(task)}
-                className="p-1.5 text-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Edit/Delete buttons - only show if user has permission */}
+            {(onEdit || onDelete) && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(task)}
+                    className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-brand-dark/10 dark:hover:bg-white/10 rounded-lg transition-colors"
+                    title="Edit task"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(task)}
+                    className="p-1.5 text-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
+                    title="Delete task"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {task.description && (

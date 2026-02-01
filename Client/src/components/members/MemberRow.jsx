@@ -17,18 +17,28 @@ const roleConfig = {
     label: "Owner",
     icon: Crown,
     color: "text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400",
+    isAssignable: false, // Owner role cannot be assigned to others
+  },
+  admin: {
+    label: "Admin",
+    icon: Shield,
+    color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400",
+    isAssignable: true,
   },
   member: {
     label: "Member",
     icon: User,
     color: "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-300",
+    isAssignable: true,
   },
 };
 
 const MemberRow = ({
   member,
   currentUserId,
-  isCurrentUserOwner,
+  currentUserRole,
+  canChangeRoles = false,
+  canRemove = false,
   onRoleChange,
   onRemove,
   loading = false,
@@ -39,7 +49,13 @@ const MemberRow = ({
   const RoleIcon = config.icon;
 
   const isCurrentUser = user?.id === currentUserId;
-  const canManage = isCurrentUserOwner && !isCurrentUser;
+  const isOwner = role === "owner";
+  
+  // Use prop-based permission for role changes (Owner only)
+  const canManageRole = canChangeRoles && !isCurrentUser && !isOwner;
+  
+  // Use prop-based permission for removal
+  const canRemoveMember = canRemove && !isCurrentUser;
 
   // Get initials for avatar
   const getInitials = (name) => {
@@ -91,18 +107,18 @@ const MemberRow = ({
         {/* Role Badge */}
         <div className="relative">
           <button
-            onClick={() => canManage && setShowRoleMenu(!showRoleMenu)}
-            disabled={!canManage || loading}
+            onClick={() => canManageRole && setShowRoleMenu(!showRoleMenu)}
+            disabled={!canManageRole || loading}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${config.color} ${
-              canManage ? "cursor-pointer hover:opacity-80" : "cursor-default"
+              canManageRole ? "cursor-pointer hover:opacity-80" : "cursor-default"
             }`}
           >
             <RoleIcon className="w-3.5 h-3.5" />
             {config.label}
-            {canManage && <ChevronDown className="w-3.5 h-3.5" />}
+            {canManageRole && <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Role Dropdown */}
+          {/* Role Dropdown - Only shows assignable roles */}
           {showRoleMenu && (
             <>
               <div
@@ -110,7 +126,9 @@ const MemberRow = ({
                 onClick={() => setShowRoleMenu(false)}
               />
               <div className="absolute right-0 top-full mt-1 w-40 bg-brand-light rounded-lg shadow-lg border border-brand-border py-1 z-20">
-                {Object.entries(roleConfig).map(([key, cfg]) => {
+                {Object.entries(roleConfig)
+                  .filter(([key, cfg]) => cfg.isAssignable) // Only show assignable roles
+                  .map(([key, cfg]) => {
                   const Icon = cfg.icon;
                   return (
                     <button
@@ -138,7 +156,7 @@ const MemberRow = ({
         </div>
 
         {/* Remove Button */}
-        {canManage && (
+        {canRemoveMember && (
           <button
             onClick={() => onRemove(member.userId)}
             disabled={loading}
