@@ -17,7 +17,7 @@ const Login = () => {
 
   useEffect(() => {
     if (session) {
-      navigate('/dashboard');
+      navigate('/home');
     }
     // Clear success message after 5 seconds
     if (successMessage) {
@@ -32,8 +32,8 @@ const Login = () => {
       const result = await signIn(data.email, data.password);
       
       if (result.success) {
-        // Session will be updated automatically, navigate to dashboard
-        navigate('/dashboard');
+        // Session will be updated automatically, navigate to home
+        navigate('/home');
         return;
       } else {
         // Provide user-friendly error messages
@@ -60,7 +60,7 @@ const Login = () => {
         setGoogleError(result.error || 'Failed to sign in with Google');
       } else {
         // OAuth redirect will happen automatically
-        // The user will be redirected to Google, then back to /dashboard
+        // The user will be redirected to Google, then back to /home
         // The session will be updated via onAuthStateChange in AuthContext
       }
     } catch (error) {

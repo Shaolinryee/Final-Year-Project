@@ -56,8 +56,8 @@ const AccountSetup = () => {
         return;
       }
 
-      // Success - navigate to dashboard
-      navigate("/dashboard");
+      // Success - navigate to home
+      navigate("/home");
     } catch (error) {
       console.error('Error setting password:', error);
       setErrors({ general: error.message || 'An error occurred while setting password' });
