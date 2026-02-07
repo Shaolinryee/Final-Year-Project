@@ -40,11 +40,6 @@ const Articles = lazy(() => import("./pages/Marketing/Articles"));
 const Features = lazy(() => import("./pages/Marketing/Features"));
 const RequestDemo = lazy(() => import("./pages/Marketing/RequestDemo"));
 
-// Legacy App pages (protected) - can be removed when fully migrated
-const AppLayout = lazy(() => import("./app/layouts/AppLayout"));
-const ProjectsPage = lazy(() => import("./pages/App/ProjectsPage"));
-const BoardPage = lazy(() => import("./pages/App/BoardPage"));
-
 // Phase 1 & 2 MVP pages (protected) - Jira-like layout
 const AppShell = lazy(() => import("./components/layout/AppShell"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -273,25 +268,6 @@ const router = createBrowserRouter([
       {
         path: "profile",
         element: withSuspense(Profile, <Loading/>),
-      },
-    ],
-  },
-  // Legacy App Routes (Protected) - can be removed when Phase 1 is stable
-  {
-    path: "/app",
-    element: withProtectedLayout(AppLayout, <Loading/>),
-    children: [
-      {
-        index: true,
-        element: <Navigate to="/dashboard" replace />,
-      },
-      {
-        path: "projects",
-        element: withSuspense(ProjectsPage, <Loading/>),
-      },
-      {
-        path: "projects/:projectId/board",
-        element: withSuspense(BoardPage, <Loading/>),
       },
     ],
   },
