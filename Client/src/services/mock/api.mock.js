@@ -92,6 +92,8 @@ export const getProjectById = async (projectId) => {
 export const createProject = async (payload) => {
   await delay();
   
+  const currentUserId = getCurrentUserId();
+  
   const newProject = {
     id: generateId("proj"),
     name: payload.name,
@@ -102,6 +104,18 @@ export const createProject = async (payload) => {
   
   const projects = getProjectsStore();
   setProjectsStore([...projects, newProject]);
+  
+  // Automatically add the creator as the project owner
+  if (currentUserId) {
+    const members = getProjectMembersStore();
+    const newMember = {
+      projectId: newProject.id,
+      userId: currentUserId,
+      role: "owner",
+      joinedAt: new Date().toISOString(),
+    };
+    setProjectMembersStore([...members, newMember]);
+  }
   
   return clone(newProject);
 };

@@ -17,6 +17,7 @@ import {
   Users,
   Settings,
   BarChart3,
+  Kanban,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { canViewSettings, getUserRole } from "../../utils/permissions";
@@ -83,6 +84,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     
     const items = [
       { name: "Overview", path: `/projects/${projectId}/overview`, icon: Home },
+      { name: "Board", path: `/projects/${projectId}/board`, icon: Kanban },
       { name: "Tasks", path: `/projects/${projectId}/tasks`, icon: ListTodo },
       { name: "Members", path: `/projects/${projectId}/members`, icon: Users },
       { name: "Activity", path: `/projects/${projectId}/activity`, icon: BarChart3 },

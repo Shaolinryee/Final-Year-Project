@@ -56,6 +56,8 @@ const MyTasks = lazy(() => import("./pages/MyTasks"));
 const GlobalActivity = lazy(() => import("./pages/GlobalActivity"));
 const Invitations = lazy(() => import("./pages/Invitations"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Boards = lazy(() => import("./pages/Boards"));
+const AppHome = lazy(() => import("./pages/AppHome"));
 
 // Project nested route components
 const ProjectLayout = lazy(() => import("./pages/project/ProjectLayout"));
@@ -199,6 +201,11 @@ const router = createBrowserRouter([
     path: "/",
     element: withProtectedLayout(AppShell, <Loading/>),
     children: [
+      // Home / Welcome
+      {
+        path: "home",
+        element: withSuspense(AppHome, <Loading/>),
+      },
       // Dashboard
       {
         path: "dashboard",
@@ -243,6 +250,10 @@ const router = createBrowserRouter([
           {
             path: "settings",
             element: withSuspense(ProjectSettings, <Loading/>),
+          },
+          {
+            path: "board",
+            element: withSuspense(Boards, <Loading/>),
           },
         ],
       },
