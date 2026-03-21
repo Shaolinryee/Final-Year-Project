@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
 import {
   X,
   Edit2,
@@ -30,7 +30,7 @@ import {
   Play,
 } from "lucide-react";
 
-import { useProject } from "./ProjectLayout";
+import { useProjectOptional } from "./ProjectLayout";
 import { tasksApi, commentsApi, attachmentsApi } from "../../services/api";
 import { useNotifications } from "../../context/NotificationContext";
 import { Button, Alert, StatusPill, ConfirmDialog } from "../../components/ui";
@@ -79,8 +79,14 @@ const priorityConfig = {
 };
 
 const TaskDetail = () => {
-  const { taskId } = useParams();
+  const { taskId, projectId: routeProjectId } = useParams();
   const navigate = useNavigate();
+  const projectContext = useProjectOptional();
+
+  if (!projectContext) {
+    return <Navigate to={`/projects/${routeProjectId}/tasks`} replace />;
+  }
+
   const {
     project,
     tasks,
@@ -91,7 +97,7 @@ const TaskDetail = () => {
     projectId,
     userRole,
     currentUser,
-  } = useProject();
+  } = projectContext;
 
   // Find task from context
   const task = tasks.find((t) => t.id === taskId);
@@ -223,7 +229,7 @@ const TaskDetail = () => {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId
-          ? { ...t, assignedToUserId: userId, assigneeName }
+          ? { ...t, assigneeId: userId, assignedToUserId: userId, assigneeName }
           : t
       )
     );
@@ -442,8 +448,9 @@ const TaskDetail = () => {
   };
 
   const getAssignee = () => {
-    if (!task?.assignedToUserId) return null;
-    const member = members.find((m) => m.userId === task.assignedToUserId);
+    const assigneeId = task?.assigneeId ?? task?.assignedToUserId;
+    if (!assigneeId) return null;
+    const member = members.find((m) => m.userId === assigneeId);
     return member?.user || { name: task.assigneeName || "Unknown" };
   };
 
@@ -1025,7 +1032,7 @@ const TaskDetail = () => {
                               key={userId}
                               onClick={() => handleAssignChange(userId)}
                               className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-brand-dark/30 ${
-                                task.assignedToUserId === userId ? "bg-brand-dark/30" : ""
+                                (task.assigneeId ?? task.assignedToUserId) === userId ? "bg-brand-dark/30" : ""
                               }`}
                             >
                               <div className="w-5 h-5 rounded-full bg-brand/30 flex items-center justify-center text-xs font-medium text-brand">

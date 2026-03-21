@@ -50,7 +50,7 @@ exports.getMyInvitations = async (req, res) => {
         status: "pending",
       },
       include: [
-        { model: Project, as: "project", attributes: ["name", "key"] },
+        { model: Project, as: "project", attributes: ["id", "name", "description"] },
         { model: User, as: "inviter", attributes: ["name", "avatar"] },
       ],
       order: [["createdAt", "DESC"]],
@@ -107,7 +107,7 @@ exports.createInvitation = async (req, res) => {
     await sendInvitationEmail(email, { 
       projectName: project.name, 
       inviterName: req.user.name,
-      projectKey: project.key,
+      projectKey: project.key || project.id?.slice(0, 8) || "PROJECT",
       token 
     });
 

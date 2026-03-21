@@ -10,10 +10,14 @@ import { Modal, Button, Input, Select } from "../ui";
 const InviteMemberModal = ({
   isOpen,
   onClose,
+  onInvite,
   onSubmit,
+  isLoading,
   loading = false,
   error = null,
 }) => {
+  const submitHandler = onInvite || onSubmit;
+  const submitting = isLoading ?? loading;
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [localError, setLocalError] = useState(null);
@@ -33,7 +37,12 @@ const InviteMemberModal = ({
       return;
     }
 
-    onSubmit({ email: email.trim().toLowerCase(), role });
+    if (!submitHandler) {
+      setLocalError("Invite action is not configured");
+      return;
+    }
+
+    submitHandler({ email: email.trim().toLowerCase(), role });
   };
 
   const handleClose = () => {
@@ -74,7 +83,7 @@ const InviteMemberModal = ({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="colleague@company.com"
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              disabled={loading}
+              disabled={submitting}
             />
           </div>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -95,7 +104,7 @@ const InviteMemberModal = ({
             value={role}
             onChange={(e) => setRole(e.target.value)}
             className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            disabled={loading}
+            disabled={submitting}
           >
             <option value="member">Member - Can view and manage tasks</option>
             <option value="admin">Admin - Can manage members and settings</option>
@@ -111,13 +120,13 @@ const InviteMemberModal = ({
             type="button"
             variant="ghost"
             onClick={handleClose}
-            disabled={loading}
+            disabled={submitting}
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            loading={loading}
+            loading={submitting}
             leftIcon={<UserPlus className="w-4 h-4" />}
           >
             Send Invitation

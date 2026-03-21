@@ -28,6 +28,8 @@ export const useProject = () => {
   return context;
 };
 
+export const useProjectOptional = () => useContext(ProjectContext);
+
 const ProjectLayout = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -304,36 +306,30 @@ const ProjectLayout = () => {
     ]
   );
 
-  // Loading state
-  if (projectLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
-        <div className="h-6 w-96 bg-white/5 rounded animate-pulse" />
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-white/5 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (projectError || !project) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-white mb-2">
-          {projectError || "Project not found"}
-        </h2>
-        <Button onClick={() => navigate("/projects")}>Back to Projects</Button>
-      </div>
-    );
-  }
-
   return (
     <ProjectContext.Provider value={contextValue}>
-      <Outlet />
+      {/* Loading state */}
+      {projectLoading ? (
+        <div className="space-y-6">
+          <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
+          <div className="h-6 w-96 bg-white/5 rounded animate-pulse" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 bg-white/5 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      ) : projectError || !project ? (
+        /* Error state */
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-white mb-2">
+            {projectError || "Project not found"}
+          </h2>
+          <Button onClick={() => navigate("/projects")}>Back to Projects</Button>
+        </div>
+      ) : (
+        <Outlet />
+      )}
     </ProjectContext.Provider>
   );
 };

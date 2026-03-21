@@ -70,14 +70,27 @@ const ProjectTasks = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingTask, setDeletingTask] = useState(null);
   const [error, setError] = useState(null);
+  const [formError, setFormError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+
+  const normalizeStatusForUI = (status) => {
+    const normalized = (status || "todo").toLowerCase().replace("-", "_");
+    if (normalized === "completed") return "done";
+    return normalized;
+  };
+
+  const normalizeStatusForApi = (status) => {
+    const normalized = (status || "todo").toLowerCase().replace("_", "-");
+    if (normalized === "completed") return "done";
+    return normalized;
+  };
 
   // Filtered tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       // Status filter
       if (statusFilter !== "all") {
-        const taskStatus = task.status?.toLowerCase().replace("-", "_") || "todo";
+        const taskStatus = normalizeStatusForUI(task.status);
         if (taskStatus !== statusFilter) return false;
       }
       
@@ -88,7 +101,8 @@ const ProjectTasks = () => {
       if (!matchesSearch) return false;
       
       // Assignee filter
-      if (filters.assignee !== "all" && task.assigneeId !== filters.assignee) return false;
+      const assigneeId = task.assigneeId ?? task.assignedToUserId;
+      if (filters.assignee !== "all" && assigneeId !== filters.assignee) return false;
       
       // Priority filter
       if (filters.priority !== "all" && task.priority !== filters.priority) return false;
@@ -101,23 +115,22 @@ const ProjectTasks = () => {
   const taskCounts = useMemo(() => {
     return {
       all: tasks.length,
-      todo: tasks.filter((t) => t.status?.toUpperCase() === "TODO").length,
-      in_progress: tasks.filter((t) => t.status?.toUpperCase() === "IN_PROGRESS").length,
-      done: tasks.filter((t) => {
-        const s = t.status?.toUpperCase();
-        return s === "COMPLETED" || s === "DONE";
-      }).length,
+      todo: tasks.filter((t) => normalizeStatusForUI(t.status) === "todo").length,
+      in_progress: tasks.filter((t) => normalizeStatusForUI(t.status) === "in_progress").length,
+      done: tasks.filter((t) => normalizeStatusForUI(t.status) === "done").length,
     };
   }, [tasks]);
 
   // Handlers
   const handleCreate = () => {
     setEditingTask(null);
+    setFormError(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (task) => {
     setEditingTask(task);
+    setFormError(null);
     setIsFormOpen(true);
   };
 
@@ -129,17 +142,23 @@ const ProjectTasks = () => {
   const handleFormSubmit = async (formData) => {
     setFormLoading(true);
     setError(null);
+    setFormError(null);
 
     try {
+      const payload = {
+        ...formData,
+        status: normalizeStatusForApi(formData.status),
+      };
+
       if (editingTask) {
-        const { data, error } = await tasksApi.update(editingTask.id, formData);
+        const { data, error } = await tasksApi.update(editingTask.id, payload);
         if (error) throw new Error(error);
 
         setTasks((prev) =>
           prev.map((t) => (t.id === editingTask.id ? data : t))
         );
       } else {
-        const { data, error } = await tasksApi.create(projectId, formData);
+        const { data, error } = await tasksApi.create(projectId, payload);
         if (error) throw new Error(error);
 
         setTasks((prev) => [...prev, data]);
@@ -148,7 +167,7 @@ const ProjectTasks = () => {
       setIsFormOpen(false);
       setEditingTask(null);
     } catch (err) {
-      setError(err.message);
+      setFormError(err.message);
     } finally {
       setFormLoading(false);
     }
@@ -160,12 +179,12 @@ const ProjectTasks = () => {
     // Optimistic update
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === taskId ? { ...t, status: newStatus.toUpperCase() } : t
+        t.id === taskId ? { ...t, status: normalizeStatusForApi(newStatus) } : t
       )
     );
 
     try {
-      const { error } = await tasksApi.updateStatus(taskId, newStatus.toUpperCase());
+      const { error } = await tasksApi.updateStatus(taskId, normalizeStatusForApi(newStatus));
       if (error) throw new Error(error);
     } catch (err) {
       fetchTasks();
@@ -184,7 +203,7 @@ const ProjectTasks = () => {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId
-          ? { ...t, assignedToUserId: userId, assigneeName }
+          ? { ...t, assigneeId: userId, assignedToUserId: userId, assigneeName }
           : t
       )
     );
@@ -439,11 +458,13 @@ const ProjectTasks = () => {
         onClose={() => {
           setIsFormOpen(false);
           setEditingTask(null);
+          setFormError(null);
         }}
         onSubmit={handleFormSubmit}
         task={editingTask}
         members={members}
-        isLoading={formLoading}
+        loading={formLoading}
+        errorMessage={formError}
       />
 
       <ConfirmDialog

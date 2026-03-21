@@ -11,6 +11,8 @@ const statusStyles = {
   // Task statuses
   todo: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  in_review: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+  done: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   
   // Priority
@@ -25,6 +27,8 @@ const statusLabels = {
   archived: "Archived",
   todo: "To Do",
   in_progress: "In Progress",
+  // in_review: "In Review",
+  done: "Done",
   completed: "Completed",
   low: "Low",
   medium: "Medium",
@@ -33,7 +37,10 @@ const statusLabels = {
 };
 
 const StatusPill = ({ status, className = "" }) => {
-  const normalizedStatus = status?.toLowerCase().replace("-", "_") || "todo";
+  const normalizedStatus = (() => {
+    const value = status?.toLowerCase().replace("-", "_") || "todo";
+    return value === "completed" ? "done" : value;
+  })();
   const style = statusStyles[normalizedStatus] || statusStyles.todo;
   const label = statusLabels[normalizedStatus] || status;
 

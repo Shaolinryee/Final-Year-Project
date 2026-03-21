@@ -12,7 +12,16 @@ const TaskFormModal = ({
   onSubmit,
   task = null, // null for create, object for edit
   loading = false,
+  errorMessage = "",
 }) => {
+  const normalizeStatus = (status) => {
+    const normalized = (status || "todo").toLowerCase().replace("_", "-");
+    if (normalized === "completed") return "done";
+    if (normalized === "in_progress") return "in-progress";
+    if (normalized === "in_review") return "in-review";
+    return normalized;
+  };
+
   const isEditing = !!task;
 
   const [formData, setFormData] = useState({
@@ -31,7 +40,7 @@ const TaskFormModal = ({
         setFormData({
           title: task.title || "",
           description: task.description || "",
-          status: task.status?.toLowerCase().replace("-", "_") || "todo",
+          status: normalizeStatus(task.status),
           priority: task.priority?.toLowerCase() || "medium",
           dueDate: task.dueDate || "",
         });
@@ -68,11 +77,10 @@ const TaskFormModal = ({
     e.preventDefault();
     if (!validate()) return;
     
-    // Transform status format for API
     const submitData = {
       ...formData,
-      status: formData.status.toUpperCase(),
-      priority: formData.priority.toUpperCase(),
+      status: normalizeStatus(formData.status),
+      priority: formData.priority.toLowerCase(),
     };
     onSubmit(submitData);
   };
@@ -106,6 +114,12 @@ const TaskFormModal = ({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {errorMessage && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-300">
+            {errorMessage}
+          </div>
+        )}
+
         <Input
           label="Task Title"
           placeholder="What needs to be done?"
@@ -131,8 +145,9 @@ const TaskFormModal = ({
             onChange={(e) => handleChange("status", e.target.value)}
             options={[
               { value: "todo", label: "To Do" },
-              { value: "in_progress", label: "In Progress" },
-              { value: "completed", label: "Completed" },
+              { value: "in-progress", label: "In Progress" },
+              // { value: "in-review", label: "In Review" },
+              { value: "done", label: "Done" },
             ]}
           />
 

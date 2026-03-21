@@ -29,11 +29,17 @@ const statusConfig = {
     icon: Clock,
     label: "In Progress",
     color: "text-blue-500",
-    next: "completed",
+    next: "done",
   },
-  completed: {
+  // in_review: {
+  //   icon: Clock,
+  //   label: "In Review",
+  //   color: "text-violet-500",
+  //   next: "done",
+  // },
+  done: {
     icon: CheckCircle2,
-    label: "Completed",
+    label: "Done",
     color: "text-emerald-500",
     next: "todo",
   },
@@ -55,12 +61,17 @@ const TaskItem = ({
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showAssignMenu, setShowAssignMenu] = useState(false);
   
-  const status = task.status?.toLowerCase().replace("-", "_") || "todo";
+  const status = (() => {
+    const normalized = task.status?.toLowerCase().replace("-", "_") || "todo";
+    return normalized === "completed" ? "done" : normalized;
+  })();
   const config = statusConfig[status] || statusConfig.todo;
   const StatusIcon = config.icon;
 
   // Check if current user can update this task's status
   const canChangeStatus = onStatusChange && canUpdateTaskStatus(userRole, task, currentUserId);
+
+  const taskAssigneeId = task.assigneeId ?? task.assignedToUserId ?? null;
 
   const handleStatusClick = () => {
     if (canChangeStatus) {
@@ -77,21 +88,21 @@ const TaskItem = ({
 
   const handleAssignSelect = (userId) => {
     setShowAssignMenu(false);
-    if (userId !== task.assignedToUserId) {
+    if (userId !== taskAssigneeId) {
       onAssign?.(task.id, userId);
     }
   };
 
   // Get assigned user info
   const getAssignee = () => {
-    if (!task.assignedToUserId) return null;
-    const member = members.find((m) => m.userId === task.assignedToUserId);
+    if (!taskAssigneeId) return null;
+    const member = members.find((m) => m.userId === taskAssigneeId);
     if (member?.user) return member.user;
     // Fallback to assigneeName if user not found in members
     if (task.assigneeName) {
-      return { name: task.assigneeName, id: task.assignedToUserId };
+      return { name: task.assigneeName, id: taskAssigneeId };
     }
-    return { name: "Unknown User", id: task.assignedToUserId };
+    return { name: "Unknown User", id: taskAssigneeId };
   };
 
   const assignee = getAssignee();
@@ -142,7 +153,7 @@ const TaskItem = ({
   return (
     <div
       className={`rounded-lg border bg-brand-light p-4 transition-all ${
-        status === "completed"
+        status === "done"
           ? "border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-900/10"
           : "border-brand-border hover:border-indigo-300 dark:hover:border-indigo-700"
       } ${onClick ? "cursor-pointer" : ""}`}
@@ -201,7 +212,7 @@ const TaskItem = ({
           <div className="flex items-start justify-between gap-2">
             <h4
               className={`font-medium ${
-                status === "completed"
+                status === "done"
                   ? "text-text-secondary line-through"
                   : "text-text-primary"
               }`}
@@ -286,7 +297,7 @@ const TaskItem = ({
                     <button
                       onClick={() => handleAssignSelect(null)}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-brand-dark/10 dark:hover:bg-white/10 ${
-                        !task.assignedToUserId ? "bg-brand-dark/5 dark:bg-white/5" : ""
+                        !taskAssigneeId ? "bg-brand-dark/5 dark:bg-white/5" : ""
                       }`}
                     >
                       <UserCircle className="w-4 h-4 text-text-secondary" />
@@ -303,7 +314,7 @@ const TaskItem = ({
                         key={userId}
                         onClick={() => handleAssignSelect(userId)}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-brand-dark/10 dark:hover:bg-white/10 ${
-                          task.assignedToUserId === userId ? "bg-brand-dark/5 dark:bg-white/5" : ""
+                          taskAssigneeId === userId ? "bg-brand-dark/5 dark:bg-white/5" : ""
                         }`}
                       >
                         <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600 dark:text-indigo-400">

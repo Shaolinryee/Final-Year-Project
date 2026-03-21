@@ -160,6 +160,7 @@ export const NotificationProvider = ({ children }) => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    refresh,
     refreshUnreadCount: refresh,
   };
 
