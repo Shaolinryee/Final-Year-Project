@@ -1,9 +1,9 @@
 /**
  * API Service Wrapper
- * Thin wrapper around mock API functions for future Supabase migration
+ * Connected to custom Node.js/PostgreSQL backend
  */
 
-import * as mockApi from "./mock/api.mock";
+import api from "./axiosInstance";
 
 // ==================== PROJECT APIs ====================
 
@@ -13,10 +13,10 @@ export const projectsApi = {
    */
   getAll: async () => {
     try {
-      const data = await mockApi.getProjects();
-      return { data, error: null };
+      const response = await api.get("/projects");
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch projects" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch projects" };
     }
   },
 
@@ -25,13 +25,10 @@ export const projectsApi = {
    */
   getById: async (projectId) => {
     try {
-      const data = await mockApi.getProjectById(projectId);
-      if (!data) {
-        return { data: null, error: "Project not found" };
-      }
-      return { data, error: null };
+      const response = await api.get(`/projects/${projectId}`);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch project" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch project" };
     }
   },
 
@@ -40,10 +37,10 @@ export const projectsApi = {
    */
   create: async (payload) => {
     try {
-      const data = await mockApi.createProject(payload);
-      return { data, error: null };
+      const response = await api.post("/projects", payload);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to create project" };
+      return { data: null, error: error.response?.data?.message || "Failed to create project" };
     }
   },
 
@@ -52,13 +49,10 @@ export const projectsApi = {
    */
   update: async (projectId, payload) => {
     try {
-      const data = await mockApi.updateProject(projectId, payload);
-      if (!data) {
-        return { data: null, error: "Project not found" };
-      }
-      return { data, error: null };
+      const response = await api.put(`/projects/${projectId}`, payload);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to update project" };
+      return { data: null, error: error.response?.data?.message || "Failed to update project" };
     }
   },
 
@@ -67,13 +61,22 @@ export const projectsApi = {
    */
   delete: async (projectId) => {
     try {
-      const success = await mockApi.deleteProject(projectId);
-      if (!success) {
-        return { success: false, error: "Project not found" };
-      }
+      await api.delete(`/projects/${projectId}`);
       return { success: true, error: null };
     } catch (error) {
-      return { success: false, error: error.message || "Failed to delete project" };
+      return { success: false, error: error.response?.data?.message || "Failed to delete project" };
+    }
+  },
+
+  /**
+   * Get project analytics
+   */
+  getAnalytics: async (projectId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/analytics`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to fetch analytics" };
     }
   },
 };
@@ -86,10 +89,10 @@ export const tasksApi = {
    */
   getByProject: async (projectId) => {
     try {
-      const data = await mockApi.getProjectTasks(projectId);
-      return { data, error: null };
+      const response = await api.get(`/tasks/project/${projectId}`);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch tasks" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch tasks" };
     }
   },
 
@@ -98,13 +101,10 @@ export const tasksApi = {
    */
   getById: async (taskId) => {
     try {
-      const data = await mockApi.getTaskById(taskId);
-      if (!data) {
-        return { data: null, error: "Task not found" };
-      }
-      return { data, error: null };
+      const response = await api.get(`/tasks/${taskId}`);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch task" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch task" };
     }
   },
 
@@ -113,10 +113,10 @@ export const tasksApi = {
    */
   create: async (projectId, payload) => {
     try {
-      const data = await mockApi.createTask(projectId, payload);
-      return { data, error: null };
+      const response = await api.post("/tasks", { ...payload, projectId });
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to create task" };
+      return { data: null, error: error.response?.data?.message || "Failed to create task" };
     }
   },
 
@@ -125,13 +125,10 @@ export const tasksApi = {
    */
   update: async (taskId, payload) => {
     try {
-      const data = await mockApi.updateTask(taskId, payload);
-      if (!data) {
-        return { data: null, error: "Task not found" };
-      }
-      return { data, error: null };
+      const response = await api.put(`/tasks/${taskId}`, payload);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to update task" };
+      return { data: null, error: error.response?.data?.message || "Failed to update task" };
     }
   },
 
@@ -140,13 +137,10 @@ export const tasksApi = {
    */
   updateStatus: async (taskId, status) => {
     try {
-      const data = await mockApi.updateTaskStatus(taskId, status);
-      if (!data) {
-        return { data: null, error: "Task not found" };
-      }
-      return { data, error: null };
+      const response = await api.put(`/tasks/${taskId}`, { status });
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to update task status" };
+      return { data: null, error: error.response?.data?.message || "Failed to update task status" };
     }
   },
 
@@ -155,13 +149,10 @@ export const tasksApi = {
    */
   delete: async (taskId) => {
     try {
-      const success = await mockApi.deleteTask(taskId);
-      if (!success) {
-        return { success: false, error: "Task not found" };
-      }
+      await api.delete(`/tasks/${taskId}`);
       return { success: true, error: null };
     } catch (error) {
-      return { success: false, error: error.message || "Failed to delete task" };
+      return { success: false, error: error.response?.data?.message || "Failed to delete task" };
     }
   },
 
@@ -170,13 +161,23 @@ export const tasksApi = {
    */
   assign: async (taskId, userId) => {
     try {
-      const data = await mockApi.assignTask(taskId, userId);
-      if (!data) {
-        return { data: null, error: "Task not found" };
-      }
-      return { data, error: null };
+      const response = await api.put(`/tasks/${taskId}`, { assigneeId: userId });
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to assign task" };
+      return { data: null, error: error.response?.data?.message || "Failed to assign task" };
+    }
+  },
+
+  /**
+   * Search and filter tasks
+   */
+  search: async (params = {}) => {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const response = await api.get(`/tasks/search/query?${query}`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: [], error: error.response?.data?.message || "Failed to search tasks" };
     }
   },
 };
@@ -189,22 +190,22 @@ export const usersApi = {
    */
   getCurrent: async () => {
     try {
-      const data = await mockApi.getCurrentUser();
-      return { data, error: null };
+      const response = await api.get("/users/me");
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch current user" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch user" };
     }
   },
 
   /**
-   * Get user by ID
+   * Update user profile
    */
-  getById: async (userId) => {
+  updateProfile: async (payload) => {
     try {
-      const data = await mockApi.getUserById(userId);
-      return { data, error: null };
+      const response = await api.put("/users/profile", payload);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch user" };
+      return { data: null, error: error.response?.data?.message || "Failed to update profile" };
     }
   },
 
@@ -213,22 +214,10 @@ export const usersApi = {
    */
   search: async (query) => {
     try {
-      const data = await mockApi.searchUsers(query);
-      return { data, error: null };
+      const response = await api.get(`/users/search?q=${query}`);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to search users" };
-    }
-  },
-
-  /**
-   * Get multiple users by IDs
-   */
-  getByIds: async (userIds) => {
-    try {
-      const data = await mockApi.getUsersByIds(userIds);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch users" };
+      return { data: null, error: error.response?.data?.message || "Failed to search users" };
     }
   },
 };
@@ -241,143 +230,46 @@ export const membersApi = {
    */
   getByProject: async (projectId) => {
     try {
-      const data = await mockApi.getProjectMembers(projectId);
-      return { data, error: null };
+      const response = await api.get(`/projects/${projectId}/members`);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch members" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch members" };
     }
   },
 
   /**
-   * Add a member to a project
+   * Add member to project
    */
-  add: async (projectId, userId, role = "member") => {
+  add: async (projectId, userId, role = 'member') => {
     try {
-      const data = await mockApi.addProjectMember(projectId, userId, role);
-      return { data, error: null };
+      const response = await api.post(`/projects/${projectId}/members`, { userId, role });
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to add member" };
+      return { data: null, error: error.response?.data?.message || "Failed to add member" };
     }
   },
 
   /**
-   * Update a member's role
+   * Update member role
    */
   updateRole: async (projectId, userId, role) => {
     try {
-      const data = await mockApi.updateProjectMemberRole(projectId, userId, role);
-      if (!data) {
-        return { data: null, error: "Member not found" };
-      }
-      return { data, error: null };
+      const response = await api.put(`/projects/${projectId}/members/${userId}`, { role });
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to update member role" };
+      return { data: null, error: error.response?.data?.message || "Failed to update member role" };
     }
   },
 
   /**
-   * Remove a member from a project
+   * Remove member from project
    */
   remove: async (projectId, userId) => {
     try {
-      const success = await mockApi.removeProjectMember(projectId, userId);
-      if (!success) {
-        return { success: false, error: "Member not found" };
-      }
+      await api.delete(`/projects/${projectId}/members/${userId}`);
       return { success: true, error: null };
     } catch (error) {
-      return { success: false, error: error.message || "Failed to remove member" };
-    }
-  },
-
-  /**
-   * Check if user is a project owner
-   */
-  isOwner: async (projectId, userId) => {
-    try {
-      const isOwner = await mockApi.isUserProjectOwner(projectId, userId);
-      return { data: isOwner, error: null };
-    } catch (error) {
-      return { data: false, error: error.message };
-    }
-  },
-};
-
-// ==================== INVITATION APIs ====================
-
-export const invitationsApi = {
-  /**
-   * Get project invitations
-   */
-  getByProject: async (projectId, status) => {
-    try {
-      const data = await mockApi.getProjectInvitations(projectId, status);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch invitations" };
-    }
-  },
-
-  /**
-   * Create a project invitation
-   */
-  create: async (projectId, email, role = "member") => {
-    try {
-      const data = await mockApi.createProjectInvitation(projectId, email, role);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to create invitation" };
-    }
-  },
-
-  /**
-   * Accept an invitation
-   */
-  accept: async (invitationId) => {
-    try {
-      const data = await mockApi.acceptInvitation(invitationId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to accept invitation" };
-    }
-  },
-
-  /**
-   * Decline an invitation
-   */
-  decline: async (invitationId) => {
-    try {
-      const data = await mockApi.declineInvitation(invitationId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to decline invitation" };
-    }
-  },
-
-  /**
-   * Revoke an invitation
-   */
-  revoke: async (invitationId) => {
-    try {
-      const success = await mockApi.revokeInvitation(invitationId);
-      if (!success) {
-        return { success: false, error: "Invitation not found" };
-      }
-      return { success: true, error: null };
-    } catch (error) {
-      return { success: false, error: error.message || "Failed to revoke invitation" };
-    }
-  },
-
-  /**
-   * Get pending invitations for current user
-   */
-  getPendingForUser: async (email) => {
-    try {
-      const data = await mockApi.getUserPendingInvitations(email);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch invitations" };
+      return { success: false, error: error.response?.data?.message || "Failed to remove member" };
     }
   },
 };
@@ -388,112 +280,24 @@ export const activityApi = {
   /**
    * Get project activity feed
    */
-  getByProject: async (projectId, options = {}) => {
+  getByProject: async (projectId) => {
     try {
-      const data = await mockApi.getProjectActivity(projectId, options);
-      return { data, error: null };
+      const response = await api.get(`/activities/project/${projectId}`);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch activity" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch project activity" };
     }
   },
 
   /**
-   * Log a new activity
+   * Get task activity history
    */
-  log: async (projectId, actorUserId, type, meta = {}) => {
+  getByTask: async (taskId) => {
     try {
-      const data = await mockApi.logActivity(projectId, actorUserId, type, meta);
-      return { data, error: null };
+      const response = await api.get(`/activities/task/${taskId}`);
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to log activity" };
-    }
-  },
-};
-
-// ==================== NOTIFICATION APIs ====================
-
-export const notificationsApi = {
-  /**
-   * Get notifications for current user
-   */
-  getMyNotifications: async () => {
-    try {
-      const data = await mockApi.getMyNotifications();
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to fetch notifications" };
-    }
-  },
-
-  /**
-   * Get paginated notifications for current user (for infinite scroll)
-   * @param {Object} options - Pagination and filter options
-   * @param {number} options.limit - Number of items per page (default: 20)
-   * @param {number} options.offset - Starting offset (default: 0)
-   * @param {boolean} options.unreadOnly - Filter to unread only (default: false)
-   * @param {string} options.tab - Tab filter: 'direct' or 'watching' (default: 'direct')
-   * @returns {Promise<{data: {data: Array, total: number, hasMore: boolean, nextOffset: number}, error: string|null}>}
-   */
-  getNotificationsPaginated: async (options = {}) => {
-    try {
-      const result = await mockApi.getMyNotificationsPaginated(options);
-      return { data: result, error: null };
-    } catch (error) {
-      return { 
-        data: { data: [], total: 0, hasMore: false, nextOffset: 0 }, 
-        error: error.message || "Failed to fetch notifications" 
-      };
-    }
-  },
-
-  /**
-   * Get unread count for current user
-   */
-  getUnreadCount: async () => {
-    try {
-      const data = await mockApi.getMyUnreadCount();
-      return { data, error: null };
-    } catch (error) {
-      return { data: 0, error: error.message || "Failed to fetch unread count" };
-    }
-  },
-
-  /**
-   * Mark a notification as read
-   */
-  markAsRead: async (notificationId) => {
-    try {
-      const data = await mockApi.markNotificationRead(notificationId);
-      if (!data) {
-        return { data: null, error: "Notification not found" };
-      }
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: error.message || "Failed to mark as read" };
-    }
-  },
-
-  /**
-   * Mark all notifications as read
-   */
-  markAllAsRead: async () => {
-    try {
-      const count = await mockApi.markAllNotificationsRead();
-      return { data: count, error: null };
-    } catch (error) {
-      return { data: 0, error: error.message || "Failed to mark all as read" };
-    }
-  },
-
-  /**
-   * Delete a notification
-   */
-  delete: async (notificationId) => {
-    try {
-      const success = await mockApi.deleteNotificationById(notificationId);
-      return { success, error: null };
-    } catch (error) {
-      return { success: false, error: error.message || "Failed to delete notification" };
+      return { data: null, error: error.response?.data?.message || "Failed to fetch task activity" };
     }
   },
 };
@@ -502,17 +306,304 @@ export const notificationsApi = {
 
 export const commentsApi = {
   /**
+   * Get comments for a task
+   */
+  getByTask: async (taskId) => {
+    try {
+      const response = await api.get(`/tasks/${taskId}/comments`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to fetch comments" };
+    }
+  },
+
+  /**
    * Add a comment to a task
    */
   add: async (taskId, content) => {
     try {
-      const data = await mockApi.addTaskComment(taskId, content);
-      return { data, error: null };
+      const response = await api.post(`/tasks/${taskId}/comments`, { text: content });
+      return { data: response.data.data, error: null };
     } catch (error) {
-      return { data: null, error: error.message || "Failed to add comment" };
+      return { data: null, error: error.response?.data?.message || "Failed to add comment" };
+    }
+  },
+
+  /**
+   * Delete a comment
+   */
+  delete: async (taskId, commentId) => {
+    try {
+      await api.delete(`/tasks/${taskId}/comments/${commentId}`);
+      return { success: true, error: null };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || "Failed to delete comment" };
     }
   },
 };
 
-// Export utilities
-export { generateProjectKey } from "./mock/api.mock";
+// ==================== INVITATION APIs ====================
+
+export const invitationsApi = {
+  getByProject: async (projectId, status = "pending") => {
+    try {
+      const response = await api.get(`/invitations/project/${projectId}?status=${status}`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to fetch invitations" };
+    }
+  },
+  create: async (projectId, email, role = "member") => {
+    try {
+      const response = await api.post(`/invitations/project/${projectId}`, { email, role });
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to create invitation" };
+    }
+  },
+  accept: async (invitationId) => {
+    try {
+      const response = await api.post(`/invitations/${invitationId}/accept`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to accept invitation" };
+    }
+  },
+  decline: async (invitationId) => {
+    try {
+      const response = await api.post(`/invitations/${invitationId}/decline`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to decline invitation" };
+    }
+  },
+  revoke: async (projectId, invitationId) => {
+    try {
+      await api.post(`/invitations/project/${projectId}/${invitationId}/revoke`);
+      return { success: true, error: null };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || "Failed to revoke invitation" };
+    }
+  },
+  getPendingForUser: async () => {
+    try {
+      const response = await api.get("/invitations/me");
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to fetch pending invitations" };
+    }
+  },
+};
+
+// ==================== NOTIFICATION APIs ====================
+
+export const notificationsApi = {
+  getMyNotifications: async () => {
+    try {
+      const response = await api.get("/notifications/me");
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to fetch notifications" };
+    }
+  },
+  getNotificationsPaginated: async (options = {}) => {
+    try {
+      const { limit = 20, offset = 0, unreadOnly = false, tab = "direct" } = options;
+      const response = await api.get(`/notifications/paginated?limit=${limit}&offset=${offset}&unreadOnly=${unreadOnly}&tab=${tab}`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to fetch paginated notifications" };
+    }
+  },
+  getUnreadCount: async () => {
+    try {
+      const response = await api.get("/notifications/unread/count");
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: 0, error: error.response?.data?.message || "Failed to fetch unread count" };
+    }
+  },
+  markAsRead: async (notificationId) => {
+    try {
+      const response = await api.put(`/notifications/${notificationId}/read`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to mark as read" };
+    }
+  },
+  markAllAsRead: async () => {
+    try {
+      const response = await api.put("/notifications/read-all");
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: 0, error: error.response?.data?.message || "Failed to mark all as read" };
+    }
+  },
+  delete: async (notificationId) => {
+    try {
+      await api.delete(`/notifications/${notificationId}`);
+      return { success: true, error: null };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || "Failed to delete notification" };
+    }
+  },
+};
+
+// ==================== ATTACHMENT APIs ====================
+
+export const attachmentsApi = {
+  /**
+   * Get attachments for a task
+   */
+  getByTask: async (taskId) => {
+    try {
+      const response = await api.get(`/tasks/${taskId}/attachments`);
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to fetch attachments" };
+    }
+  },
+
+  /**
+   * Upload an attachment to a task
+   */
+  upload: async (taskId, file) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await api.post(`/tasks/${taskId}/attachments`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to upload attachment" };
+    }
+  },
+
+  /**
+   * Delete an attachment
+   */
+  delete: async (attachmentId) => {
+    try {
+      await api.delete(`/tasks/attachments/${attachmentId}`);
+      return { success: true, error: null };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.message || "Failed to delete attachment" };
+    }
+  },
+};
+
+// ==================== AUTH APIs ====================
+
+export const authApi = {
+  /**
+   * Register a new user
+   */
+  register: async (payload) => {
+    try {
+      const response = await api.post("/auth/register", payload);
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Registration failed" };
+    }
+  },
+
+  /**
+   * Login user
+   */
+  login: async (payload) => {
+    try {
+      const response = await api.post("/auth/login", payload);
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Login failed" };
+    }
+  },
+
+  /**
+   * Google Login / Registration
+   */
+  googleLogin: async (credential) => {
+    try {
+      const response = await api.post("/auth/google", { credential });
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Google authentication failed" };
+    }
+  },
+
+  /**
+   * Sign up with OTP
+   */
+  signUpWithOTP: async (email, name) => {
+    try {
+      const response = await api.post("/auth/signup-otp", { email, name });
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to send OTP" };
+    }
+  },
+
+  /**
+   * Verify OTP
+   */
+  verifyOTP: async (email, token) => {
+    try {
+      const response = await api.post("/auth/verify-otp", { email, token });
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "OTP verification failed" };
+    }
+  },
+
+  /**
+   * Reset Password
+   */
+  resetPassword: async (email) => {
+    try {
+      const response = await api.post("/auth/reset-password", { email });
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to send reset code" };
+    }
+  },
+
+  /**
+   * Verify Reset OTP
+   */
+  verifyResetOTP: async (email, token) => {
+    try {
+      const response = await api.post("/auth/verify-reset-otp", { email, token });
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "OTP verification failed" };
+    }
+  },
+
+  /**
+   * Update Password after reset
+   */
+  updatePasswordReset: async (email, password) => {
+    try {
+      const response = await api.post("/auth/update-password-reset", { email, password });
+      return { data: response.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to update password" };
+    }
+  },
+};
+
+// ==================== UTILS ====================
+
+export const generateProjectKey = (name) => {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 3);
+};

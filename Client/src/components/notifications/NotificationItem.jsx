@@ -8,7 +8,7 @@ import {
   RefreshCw,
   Circle
 } from 'lucide-react';
-import { NOTIFICATION_TYPES } from '../../services/mock/notifications.mock';
+import { NOTIFICATION_TYPES } from '../../constants';
 import { formatCompactTime } from './groupByDate';
 
 /**
@@ -17,8 +17,10 @@ import { formatCompactTime } from './groupByDate';
 const getNotificationIcon = (type) => {
   const iconMap = {
     [NOTIFICATION_TYPES.INVITE_RECEIVED]: { icon: UserPlus, color: 'text-blue-400', bg: 'bg-blue-500/20' },
+    [NOTIFICATION_TYPES.PROJECT_ADDED]: { icon: UserPlus, color: 'text-sky-400', bg: 'bg-sky-500/20' },
     [NOTIFICATION_TYPES.INVITE_ACCEPTED]: { icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
     [NOTIFICATION_TYPES.TASK_ASSIGNED]: { icon: ClipboardList, color: 'text-violet-400', bg: 'bg-violet-500/20' },
+    [NOTIFICATION_TYPES.TASK_COMPLETED]: { icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
     [NOTIFICATION_TYPES.TASK_COMMENT]: { icon: MessageSquare, color: 'text-amber-400', bg: 'bg-amber-500/20' },
     [NOTIFICATION_TYPES.TASK_STATUS_CHANGED]: { icon: RefreshCw, color: 'text-cyan-400', bg: 'bg-cyan-500/20' },
   };

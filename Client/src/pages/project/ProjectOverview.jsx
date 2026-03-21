@@ -3,7 +3,7 @@
  * Shows project details, stats, and quick actions
  */
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Edit2,
@@ -26,6 +26,20 @@ import {
   StatusPill,
 } from "../../components/ui";
 import { ProjectFormModal } from "../../components/projects";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  AreaChart,
+  Area,
+  CartesianGrid,
+} from "recharts";
 
 const ProjectOverview = () => {
   const navigate = useNavigate();
@@ -44,6 +58,26 @@ const ProjectOverview = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [error, setError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  
+  // Analytics State
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!project?.id) return;
+      setAnalyticsLoading(true);
+      try {
+        const { data, error } = await projectsApi.getAnalytics(project.id);
+        if (data) setAnalytics(data);
+      } catch (err) {
+        console.error("Failed to fetch analytics:", err);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, [project?.id]);
 
   // Stats
   const taskCounts = {
@@ -185,6 +219,163 @@ const ProjectOverview = () => {
               <p className="text-2xl font-bold text-text-primary">{members.length}</p>
               <p className="text-sm text-text-secondary">Members</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Visualization */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Status Distribution */}
+        <div className="p-5 rounded-xl bg-brand-light border border-brand-border">
+          <h3 className="font-semibold text-text-primary mb-6">Task Status Distribution</h3>
+          <div className="h-[250px] w-full">
+            {tasks.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "To Do", value: taskCounts.todo, color: "#6366f1" },
+                      { name: "In Progress", value: taskCounts.inProgress, color: "#f59e0b" },
+                      { name: "Done", value: taskCounts.done, color: "#10b981" },
+                    ].filter(d => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {[
+                      { name: "To Do", color: "#6366f1" },
+                      { name: "In Progress", color: "#f59e0b" },
+                      { name: "Done", color: "#10b981" },
+                    ].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#f3f4f6' }}
+                    itemStyle={{ color: '#f3f4f6' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-text-secondary italic">
+                No task data available
+              </div>
+            )}
+          </div>
+          <div className="flex justify-center gap-6 mt-4">
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
+              <span className="w-3 h-3 rounded-full bg-[#6366f1]"></span> To Do
+            </div>
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
+              <span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span> In Progress
+            </div>
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
+              <span className="w-3 h-3 rounded-full bg-[#10b981]"></span> Done
+            </div>
+          </div>
+        </div>
+
+        {/* Completion Trend (Limited data simulated from task updates if needed, but endpoint gives it) */}
+        <div className="p-5 rounded-xl bg-brand-light border border-brand-border">
+          <h3 className="font-semibold text-text-primary mb-6">Velocity (Last 14 Days)</h3>
+          <div className="h-[250px] w-full">
+            {analytics?.completionTrend?.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={analytics.completionTrend.map(d => ({ 
+                  date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  completed: parseInt(d.count)
+                }))}>
+                  <defs>
+                    <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#9ca3af', fontSize: 10 }} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#f3f4f6' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="completed" 
+                    stroke="#6366f1" 
+                    fillOpacity={1} 
+                    fill="url(#colorCompleted)" 
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-text-secondary italic gap-2">
+                <Clock className="w-8 h-8 opacity-20" />
+                <span>Not enough historical data to show trend</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Priority Breakdown */}
+        <div className="p-5 rounded-xl bg-brand-light border border-brand-border">
+          <h3 className="font-semibold text-text-primary mb-6">Priority Breakdown</h3>
+          <div className="h-[250px] w-full">
+            {analytics?.priorityDistribution?.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics.priorityDistribution.map(p => ({
+                  name: p.priority.charAt(0).toUpperCase() + p.priority.slice(1),
+                  count: parseInt(p.count),
+                  color: p.priority === 'urgent' ? '#f43f5e' : 
+                         p.priority === 'high' ? '#f59e0b' : 
+                         p.priority === 'medium' ? '#3b82f6' : '#9ca3af'
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#9ca3af', fontSize: 10 }} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#f3f4f6' }}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {analytics.priorityDistribution.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={
+                          entry.priority === 'urgent' ? '#f43f5e' : 
+                          entry.priority === 'high' ? '#f59e0b' : 
+                          entry.priority === 'medium' ? '#3b82f6' : '#9ca3af'
+                        } 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-text-secondary italic">
+                No priority data available
+              </div>
+            )}
           </div>
         </div>
       </div>

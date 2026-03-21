@@ -16,6 +16,8 @@ import {
   UserX,
   Shield,
   UserMinus,
+  MessageSquare,
+  Paperclip,
 } from "lucide-react";
 
 // Activity type configuration
@@ -99,6 +101,21 @@ const activityConfig = {
     icon: UserMinus,
     color: "text-rose-500 bg-rose-50 dark:bg-rose-900/20",
     getText: (meta, actor) => `removed ${meta.memberName} from the project`,
+  },
+  added_comment: {
+    icon: MessageSquare,
+    color: "text-blue-500 bg-blue-50 dark:bg-blue-900/20",
+    getText: (meta, actor) => `commented on "${meta.taskTitle || "a task"}"`,
+  },
+  uploaded_attachment: {
+    icon: Paperclip,
+    color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20",
+    getText: (meta, actor) => `uploaded an attachment to "${meta.taskTitle || "a task"}"`,
+  },
+  deleted_attachment: {
+    icon: Paperclip,
+    color: "text-rose-500 bg-rose-50 dark:bg-rose-900/20",
+    getText: (meta, actor) => `removed an attachment from "${meta.taskTitle || "a task"}"`,
   },
 };
 

@@ -11,6 +11,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthContextProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { SocketProvider } from "./context/SocketContext";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Lazy load pages
 const HomePage = lazy(() => import("./pages/Marketing/HomePage"));
@@ -303,15 +305,19 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <AuthContextProvider>
-      <ThemeProvider>
-        <NotificationProvider>
-          <ErrorBoundary fallback={<div>Something went wrong</div>}>
-            <RouterProvider router={router} />
-          </ErrorBoundary>
-        </NotificationProvider>
-      </ThemeProvider>
-    </AuthContextProvider>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <AuthContextProvider>
+        <SocketProvider>
+          <ThemeProvider>
+            <NotificationProvider>
+              <ErrorBoundary fallback={<div>Something went wrong</div>}>
+                <RouterProvider router={router} />
+              </ErrorBoundary>
+            </NotificationProvider>
+          </ThemeProvider>
+        </SocketProvider>
+      </AuthContextProvider>
+    </GoogleOAuthProvider>
   );
 }
 

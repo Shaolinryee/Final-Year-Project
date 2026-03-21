@@ -14,6 +14,7 @@ import {
   usersApi,
 } from "../../services/api";
 import { TaskItemSkeleton, Button } from "../../components/ui";
+import { useSocket } from "../../context/SocketContext";
 import { getUserRole, isOwner as checkIsOwner, isAdmin as checkIsAdmin } from "../../utils/permissions";
 
 // Project Context
@@ -30,6 +31,7 @@ export const useProject = () => {
 const ProjectLayout = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { socket, joinProject, leaveProject } = useSocket();
 
   // Current user
   const [currentUser, setCurrentUser] = useState(null);
@@ -130,14 +132,120 @@ const ProjectLayout = () => {
     setActivityLoading(false);
   }, [projectId]);
 
-  // Initial data fetch
+  // Initial data fetch and socket room management
   useEffect(() => {
-    fetchProject();
-    fetchTasks();
-    fetchMembers();
-    fetchInvitations();
-    fetchActivity();
-  }, [fetchProject, fetchTasks, fetchMembers, fetchInvitations, fetchActivity]);
+    if (projectId) {
+      fetchProject();
+      fetchTasks();
+      fetchMembers();
+      fetchInvitations();
+      fetchActivity();
+
+      // Join room for real-time updates
+      joinProject(projectId);
+
+      return () => {
+        leaveProject(projectId);
+      };
+    }
+  }, [projectId, fetchProject, fetchTasks, fetchMembers, fetchInvitations, fetchActivity, joinProject, leaveProject]);
+
+  // Socket event listeners
+  useEffect(() => {
+    if (socket && projectId) {
+      const handleTaskCreated = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setTasks((prev) => [data.task, ...prev]);
+      };
+
+      const handleTaskUpdated = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setTasks((prev) => prev.map((t) => (t.id === data.task.id ? data.task : t)));
+      };
+
+      const handleTaskDeleted = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setTasks((prev) => prev.filter((t) => t.id !== data.taskId));
+      };
+
+      const handleProjectUpdated = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setProject(data.project);
+      };
+
+      const handleProjectDeleted = (data) => {
+        if (data.projectId === projectId) {
+          navigate("/projects", { state: { message: "Project was deleted by owner" } });
+        }
+      };
+
+      const handleCommentCreated = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setTasks((prev) => prev.map(t => {
+          if (t.id === data.taskId) {
+            const comments = t.comments || [];
+            if (comments.some(c => c.id === data.comment.id)) return t;
+            return { ...t, comments: [...comments, data.comment] };
+          }
+          return t;
+        }));
+      };
+
+      const handleCommentDeleted = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setTasks((prev) => prev.map(t => {
+          if (t.id === data.taskId) {
+            return { ...t, comments: (t.comments || []).filter(c => c.id !== data.commentId) };
+          }
+          return t;
+        }));
+      };
+
+      const handleAttachmentCreated = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setTasks((prev) => prev.map(t => {
+          if (t.id === data.taskId) {
+            const attachments = t.attachments || [];
+            if (attachments.some(a => a.id === data.attachment.id)) return t;
+            return { ...t, attachments: [data.attachment, ...attachments] };
+          }
+          return t;
+        }));
+      };
+
+      const handleAttachmentDeleted = (data) => {
+        if (data.userId === currentUser?.id) return;
+        setTasks((prev) => prev.map(t => {
+          if (t.id === data.taskId) {
+            return { ...t, attachments: (t.attachments || []).filter(a => a.id !== data.attachmentId) };
+          }
+          return t;
+        }));
+      };
+
+      socket.on('task_created', handleTaskCreated);
+      socket.on('task_updated', handleTaskUpdated);
+      socket.on('task_deleted', handleTaskDeleted);
+      socket.on('project_updated', handleProjectUpdated);
+      socket.on('project_deleted', handleProjectDeleted);
+      socket.on('comment_created', handleCommentCreated);
+      socket.on('comment_deleted', handleCommentDeleted);
+      socket.on('attachment_created', handleAttachmentCreated);
+      socket.on('attachment_deleted', handleAttachmentDeleted);
+
+      return () => {
+        socket.off('task_created', handleTaskCreated);
+        socket.off('task_updated', handleTaskUpdated);
+        socket.off('task_deleted', handleTaskDeleted);
+        socket.off('project_updated', handleProjectUpdated);
+        socket.off('project_deleted', handleProjectDeleted);
+        socket.off('comment_created', handleCommentCreated);
+        socket.off('comment_deleted', handleCommentDeleted);
+        socket.off('attachment_created', handleAttachmentCreated);
+        socket.off('attachment_deleted', handleAttachmentDeleted);
+      };
+    }
+  }, [socket, projectId, currentUser?.id, navigate]);
 
   // Context value
   const contextValue = useMemo(

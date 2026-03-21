@@ -2,11 +2,29 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthForm from './components/AuthForm/AuthForm';
 import { useAuth } from '../context/AuthContext';
+import { useGoogleLogin } from '@react-oauth/google';
 
 const Signup = () => {
   const navigate = useNavigate();
   const { session, signUpWithOTP, signInWithGoogle } = useAuth();
   const [googleError, setGoogleError] = useState('');
+
+  const googleAuthSignup = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleError('');
+      try {
+        const result = await signInWithGoogle(null, tokenResponse.access_token);
+        if (result.success) {
+          navigate('/home');
+        } else {
+          setGoogleError(result.error || 'Failed to finish Google signup');
+        }
+      } catch (error) {
+        setGoogleError(error.message || 'Error occurred during Google signup');
+      }
+    },
+    onError: () => setGoogleError('Google signup failed'),
+  });
   
   const fields = [
     { id: 'email', label: 'Email', type: 'email', placeholder: 'Enter email address' }
@@ -14,7 +32,7 @@ const Signup = () => {
 
   useEffect(() => {
     if (session) {
-      navigate('/dashboard');
+      navigate('/home');
     }
   }, [session, navigate]);
 
@@ -23,7 +41,7 @@ const Signup = () => {
     // Use passwordless signup with OTP
     console.log('Attempting to sign up with OTP for:', data.email);
     const result = await signUpWithOTP(data.email);
-    
+    ``
     if (result.success) {
       console.log('OTP signup successful, navigating to verification');
       // Navigate to OTP verification
@@ -35,20 +53,15 @@ const Signup = () => {
     }
   };
 
-  const handleGoogleAuth = async () => {
+  const handleGoogleAuth = () => {
     setGoogleError('');
-    const result = await signInWithGoogle();
-    
-    if (!result.success) {
-      setGoogleError(result.error || 'Failed to sign in with Google');
-    }
-    // If successful, the OAuth redirect will happen automatically
+    googleAuthSignup();
   };
 
   return (
     <AuthForm
       title="Sign up to continue"
-      subtitle={true}
+      subtitle="Join CollabSpace and start collaborating today."
       fields={fields}
       submitText="Sign up"
       onSubmit={handleSignup}

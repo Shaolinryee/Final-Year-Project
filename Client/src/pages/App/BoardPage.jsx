@@ -17,24 +17,19 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button, Input, Modal, Textarea, Select, Badge, Drawer } from "../../components/ui";
-import {
-  getProjectById,
-  getProjectTasks,
-  createTask,
-  updateTaskStatus,
-} from "../../services/mock/api.mock";
+import { projectsApi, tasksApi } from "../../services/api";
 
 const COLUMNS = [
-  { id: "TODO", title: "To Do", icon: Clock, color: "gray" },
-  { id: "IN_PROGRESS", title: "In Progress", icon: AlertCircle, color: "blue" },
-  { id: "DONE", title: "Done", icon: CheckCircle2, color: "green" },
+  { id: "todo", title: "To Do", icon: Clock, color: "gray" },
+  { id: "in-progress", title: "In Progress", icon: AlertCircle, color: "blue" },
+  { id: "done", title: "Done", icon: CheckCircle2, color: "green" },
 ];
 
 const PRIORITIES = [
-  { value: "LOW", label: "Low", color: "default" },
-  { value: "MEDIUM", label: "Medium", color: "info" },
-  { value: "HIGH", label: "High", color: "warning" },
-  { value: "URGENT", label: "Urgent", color: "danger" },
+  { value: "low", label: "Low", color: "default" },
+  { value: "medium", label: "Medium", color: "info" },
+  { value: "high", label: "High", color: "warning" },
+  { value: "urgent", label: "Urgent", color: "danger" },
 ];
 
 const BoardPage = () => {
@@ -54,12 +49,12 @@ const BoardPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [projectData, tasksData] = await Promise.all([
-        getProjectById(projectId),
-        getProjectTasks(projectId),
+      const [projectRes, tasksRes] = await Promise.all([
+        projectsApi.getById(projectId),
+        tasksApi.getByProject(projectId),
       ]);
-      setProject(projectData);
-      setTasks(tasksData);
+      setProject(projectRes.data);
+      setTasks(tasksRes.data || []);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -69,9 +64,11 @@ const BoardPage = () => {
 
   const handleCreateTask = async (taskData) => {
     try {
-      const newTask = await createTask(projectId, taskData);
-      setTasks((prev) => [...prev, newTask]);
-      setIsCreateModalOpen(false);
+      const { data, error } = await tasksApi.create(projectId, taskData);
+      if (data) {
+        setTasks((prev) => [...prev, data]);
+        setIsCreateModalOpen(false);
+      }
     } catch (error) {
       console.error("Failed to create task:", error);
     }
@@ -79,10 +76,10 @@ const BoardPage = () => {
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
-      const updatedTask = await updateTaskStatus(taskId, newStatus);
-      if (updatedTask) {
+      const { data, error } = await tasksApi.updateStatus(taskId, newStatus);
+      if (data) {
         setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? updatedTask : t))
+          prev.map((t) => (t.id === taskId ? data : t))
         );
       }
     } catch (error) {
@@ -345,7 +342,7 @@ const TaskCard = ({ task, onDragStart, onClick }) => {
 const CreateTaskModal = ({ isOpen, onClose, onSubmit }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("MEDIUM");
+  const [priority, setPriority] = useState("medium");
   const [assigneeName, setAssigneeName] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
@@ -361,7 +358,7 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit }) => {
       priority,
       assigneeName: assigneeName || null,
       dueDate: dueDate || null,
-      status: "TODO",
+      status: "todo",
     });
     setLoading(false);
     resetForm();
@@ -370,7 +367,7 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit }) => {
   const resetForm = () => {
     setTitle("");
     setDescription("");
-    setPriority("MEDIUM");
+    setPriority("medium");
     setAssigneeName("");
     setDueDate("");
   };
@@ -479,9 +476,9 @@ const TaskDetailDrawer = ({ task, onClose, onStatusChange }) => {
                 onClick={() => onStatusChange(task.id, col.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   task.status === col.id
-                    ? col.id === "TODO"
+                    ? col.id === "todo"
                       ? "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                      : col.id === "IN_PROGRESS"
+                      : col.id === "in-progress"
                       ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                       : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                     : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"

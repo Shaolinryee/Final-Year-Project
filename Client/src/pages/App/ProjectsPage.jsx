@@ -15,7 +15,7 @@ import {
   List,
 } from "lucide-react";
 import { Button, Input, Modal, Textarea, Badge } from "../../components/ui";
-import { getProjects, createProject, generateProjectKey } from "../../services/mock/api.mock";
+import { projectsApi, generateProjectKey } from "../../services/api";
 
 const ProjectsPage = () => {
   const navigate = useNavigate();
@@ -33,8 +33,12 @@ const ProjectsPage = () => {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const data = await getProjects();
-      setProjects(data);
+      const { data, error } = await projectsApi.getAll();
+      if (data) {
+        setProjects(data);
+      } else {
+        console.error("Error fetching projects:", error);
+      }
     } catch (error) {
       console.error("Failed to fetch projects:", error);
     } finally {
@@ -44,9 +48,13 @@ const ProjectsPage = () => {
 
   const handleCreateProject = async (projectData) => {
     try {
-      const newProject = await createProject(projectData);
-      setProjects((prev) => [...prev, newProject]);
-      setIsCreateModalOpen(false);
+      const { data, error } = await projectsApi.create(projectData);
+      if (data) {
+        setProjects((prev) => [...prev, data]);
+        setIsCreateModalOpen(false);
+      } else {
+        console.error("Error creating project:", error);
+      }
     } catch (error) {
       console.error("Failed to create project:", error);
     }

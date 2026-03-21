@@ -18,13 +18,16 @@ import {
   Sun,
   Moon,
   Bell,
+  Search,
 } from "lucide-react";
 import { projectsApi, tasksApi } from "../../services/api";
 import NotificationsDrawer from "../notifications/NotificationsDrawer";
+import GlobalSearch from "../search/GlobalSearch";
 
 const Topbar = ({ onToggleSidebar }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { unreadCount } = useNotifications();
@@ -54,6 +57,18 @@ const Topbar = ({ onToggleSidebar }) => {
     await logout();
     navigate("/login");
   };
+
+  // Keyboard shortcut for search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Generate breadcrumb segments
   const getBreadcrumbs = () => {
@@ -127,6 +142,19 @@ const Topbar = ({ onToggleSidebar }) => {
 
       {/* Right - Notifications + Theme Toggle + User Menu */}
       <div className="flex items-center gap-3">
+        {/* Global Search Trigger */}
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark/30 border border-brand-border text-text-secondary hover:bg-brand-dark/50 hover:text-text-primary transition-all group mr-2"
+          title="Search (Ctrl+K)"
+        >
+          <Search className="w-4 h-4" />
+          <span className="text-xs font-medium hidden md:block">Search...</span>
+          <span className="hidden lg:flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded bg-brand-light/50 border border-brand-border text-[10px] opacity-60">
+            <span className="font-mono">⌘</span>K
+          </span>
+        </button>
+
         {/* Notifications Bell */}
         <button
           onClick={() => setNotificationsDrawerOpen(true)}
@@ -231,6 +259,12 @@ const Topbar = ({ onToggleSidebar }) => {
           )}
         </div>
       </div>
+
+      {/* Search Modal */}
+      <GlobalSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
     </header>
   );
 };

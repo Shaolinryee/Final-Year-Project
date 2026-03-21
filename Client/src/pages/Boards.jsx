@@ -1,10 +1,10 @@
 /**
  * Kanban Board Page
- * Displays tasks in columns: TODO, IN_PROGRESS, DONE
+ * Displays tasks in columns: todo, in-progress, done
  * Supports task creation, drag-and-drop, and task detail drawer
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -16,31 +16,30 @@ import {
   MoreHorizontal,
   Edit2,
   Trash2,
+  Filter,
+  Search as SearchIcon,
+  User as UserIcon,
+  X,
 } from "lucide-react";
 import { Button, Badge, Drawer, ConfirmDialog } from "../components/ui";
 import { TaskFormModal } from "../components/tasks";
-import {
-  getProjectById,
-  getProjectTasks,
-  createTask,
-  updateTask,
-  updateTaskStatus,
-  deleteTask,
-} from "../services/mock/api.mock";
+import { projectsApi, tasksApi, membersApi } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 
 // Column configuration
 const COLUMNS = [
-  { id: "TODO", title: "To Do", icon: Clock, color: "gray" },
-  { id: "IN_PROGRESS", title: "In Progress", icon: AlertCircle, color: "blue" },
-  { id: "DONE", title: "Done", icon: CheckCircle2, color: "green" },
+  { id: "todo", title: "To Do", icon: Clock, color: "gray" },
+  { id: "in-progress", title: "In Progress", icon: AlertCircle, color: "blue" },
+  { id: "done", title: "Done", icon: CheckCircle2, color: "green" },
 ];
 
 // Priority configuration
 const PRIORITIES = [
-  { value: "LOW", label: "Low", color: "default" },
-  { value: "MEDIUM", label: "Medium", color: "info" },
-  { value: "HIGH", label: "High", color: "warning" },
-  { value: "URGENT", label: "Urgent", color: "danger" },
+  { value: "low", label: "Low", color: "default" },
+  { value: "medium", label: "Medium", color: "info" },
+  { value: "high", label: "High", color: "warning" },
+  { value: "urgent", label: "Urgent", color: "danger" },
 ];
 
 // ==================== Task Card Component ====================
@@ -233,7 +232,6 @@ const TaskDetailDrawer = ({ task, isOpen, onClose, onStatusChange }) => {
   if (!task) return null;
 
   const priorityConfig = PRIORITIES.find((p) => p.value === task.priority) || PRIORITIES[1];
-  const currentColumn = COLUMNS.find((c) => c.id === task.status);
 
   return (
     <Drawer isOpen={isOpen} onClose={onClose} title="Task Details" size="md">
@@ -318,6 +316,8 @@ const TaskDetailDrawer = ({ task, isOpen, onClose, onStatusChange }) => {
 const Boards = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { socket, joinProject, leaveProject } = useSocket();
 
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -333,22 +333,87 @@ const Boards = () => {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Filter state
+  const [filters, setFilters] = useState({
+    priority: "all",
+    assignee: "all",
+    q: ""
+  });
+  const [members, setMembers] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+
   // Fetch project and tasks on mount
   useEffect(() => {
     if (projectId) {
       fetchData();
+      
+      // Join project room for real-time updates
+      joinProject(projectId);
+      
+      return () => {
+        leaveProject(projectId);
+      };
     }
-  }, [projectId]);
+  }, [projectId, joinProject, leaveProject]);
+
+  // Socket event listeners
+  useEffect(() => {
+    if (socket && projectId) {
+      const handleTaskCreated = (data) => {
+        if (data.userId === user?.id) return;
+        setTasks((prev) => [data.task, ...prev]);
+      };
+
+      const handleTaskUpdated = (data) => {
+        if (data.userId === user?.id) return;
+        setTasks((prev) => prev.map((t) => (t.id === data.task.id ? data.task : t)));
+        if (selectedTask?.id === data.task.id) setSelectedTask(data.task);
+      };
+
+      const handleTaskDeleted = (data) => {
+        if (data.userId === user?.id) return;
+        setTasks((prev) => prev.filter((t) => t.id !== data.taskId));
+        if (selectedTask?.id === data.taskId) setSelectedTask(null);
+      };
+
+      const handleProjectUpdated = (data) => {
+        if (data.userId === user?.id) return;
+        setProject(data.project);
+      };
+
+      const handleProjectDeleted = (data) => {
+        if (data.projectId === projectId) {
+          navigate("/projects", { state: { message: "Project was deleted by owner" } });
+        }
+      };
+
+      socket.on('task_created', handleTaskCreated);
+      socket.on('task_updated', handleTaskUpdated);
+      socket.on('task_deleted', handleTaskDeleted);
+      socket.on('project_updated', handleProjectUpdated);
+      socket.on('project_deleted', handleProjectDeleted);
+
+      return () => {
+        socket.off('task_created', handleTaskCreated);
+        socket.off('task_updated', handleTaskUpdated);
+        socket.off('task_deleted', handleTaskDeleted);
+        socket.off('project_updated', handleProjectUpdated);
+        socket.off('project_deleted', handleProjectDeleted);
+      };
+    }
+  }, [socket, projectId, user?.id, navigate, selectedTask?.id]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [projectData, tasksData] = await Promise.all([
-        getProjectById(projectId),
-        getProjectTasks(projectId),
+      const [projectRes, tasksRes, membersRes] = await Promise.all([
+        projectsApi.getById(projectId),
+        tasksApi.getByProject(projectId),
+        membersApi.getByProject(projectId),
       ]);
-      setProject(projectData);
-      setTasks(tasksData || []);
+      setProject(projectRes.data);
+      setTasks(tasksRes.data || []);
+      setMembers(membersRes.data || []);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -356,20 +421,36 @@ const Boards = () => {
     }
   };
 
+  // Filter tasks
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const matchesSearch = !filters.q || 
+        task.title?.toLowerCase().includes(filters.q.toLowerCase()) ||
+        task.description?.toLowerCase().includes(filters.q.toLowerCase());
+      
+      const matchesPriority = filters.priority === "all" || task.priority === filters.priority;
+      const matchesAssignee = filters.assignee === "all" || task.assigneeId === filters.assignee;
+      
+      return matchesSearch && matchesPriority && matchesAssignee;
+    });
+  }, [tasks, filters]);
+
   // Group tasks by status
   const getTasksByStatus = (status) =>
-    tasks.filter((task) => task.status === status);
+    filteredTasks.filter((task) => task.status === status);
 
   // Handle task creation
   const handleCreateTask = async (taskData) => {
     setCreateLoading(true);
     try {
-      const newTask = await createTask(projectId, {
+      const { data, error } = await tasksApi.create(projectId, {
         ...taskData,
-        status: "TODO", // New tasks always start in TODO
+        status: "todo",
       });
-      setTasks((prev) => [...prev, newTask]);
-      setIsCreateModalOpen(false);
+      if (data) {
+        setTasks((prev) => [...prev, data]);
+        setIsCreateModalOpen(false);
+      }
     } catch (error) {
       console.error("Failed to create task:", error);
     } finally {
@@ -383,14 +464,13 @@ const Boards = () => {
     
     setEditLoading(true);
     try {
-      const updatedTask = await updateTask(editingTask.id, taskData);
-      if (updatedTask) {
+      const { data, error } = await tasksApi.update(editingTask.id, taskData);
+      if (data) {
         setTasks((prev) =>
-          prev.map((t) => (t.id === editingTask.id ? updatedTask : t))
+          prev.map((t) => (t.id === editingTask.id ? data : t))
         );
-        // Update selected task if it's the one being edited
         if (selectedTask?.id === editingTask.id) {
-          setSelectedTask(updatedTask);
+          setSelectedTask(data);
         }
       }
       setEditingTask(null);
@@ -407,10 +487,9 @@ const Boards = () => {
     
     setDeleteLoading(true);
     try {
-      const success = await deleteTask(taskToDelete.id);
+      const { success, error } = await tasksApi.delete(taskToDelete.id);
       if (success) {
         setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
-        // Close drawer if deleted task was selected
         if (selectedTask?.id === taskToDelete.id) {
           setSelectedTask(null);
         }
@@ -426,14 +505,13 @@ const Boards = () => {
   // Handle status change
   const handleStatusChange = async (taskId, newStatus) => {
     try {
-      const updatedTask = await updateTaskStatus(taskId, newStatus);
-      if (updatedTask) {
+      const { data, error } = await tasksApi.updateStatus(taskId, newStatus);
+      if (data) {
         setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? updatedTask : t))
+          prev.map((t) => (t.id === taskId ? data : t))
         );
-        // Update selected task if it's the one being changed
         if (selectedTask?.id === taskId) {
-          setSelectedTask(updatedTask);
+          setSelectedTask(data);
         }
       }
     } catch (error) {
@@ -512,13 +590,97 @@ const Boards = () => {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setIsCreateModalOpen(true)}
-          leftIcon={<Plus size={18} />}
-        >
-          Create Task
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={showFilters || filters.priority !== "all" || filters.assignee !== "all" || filters.q !== "" ? "border-brand text-brand" : ""}
+            leftIcon={<Filter size={18} />}
+          >
+            Filters
+            {(filters.priority !== "all" || filters.assignee !== "all" || filters.q !== "") && (
+              <span className="ml-2 w-2 h-2 bg-brand rounded-full"></span>
+            )}
+          </Button>
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            leftIcon={<Plus size={18} />}
+          >
+            Create Task
+          </Button>
+        </div>
       </div>
+
+      {/* Filter Bar */}
+      {showFilters && (
+        <div className="bg-brand-dark/20 border border-brand-border rounded-xl p-4 mb-6 animate-in slide-in-from-top-2 duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            {/* Search */}
+            <div className="space-y-1.5 text-left">
+              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">Search</label>
+              <div className="relative">
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+                <input
+                  type="text"
+                  placeholder="Find a task..."
+                  value={filters.q}
+                  onChange={(e) => setFilters(prev => ({ ...prev, q: e.target.value }))}
+                  className="w-full pl-9 pr-3 py-2 bg-brand-light border border-brand-border rounded-lg text-sm text-text-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Assignee */}
+            <div className="space-y-1.5 text-left">
+              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">Assignee</label>
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+                <select
+                  value={filters.assignee}
+                  onChange={(e) => setFilters(prev => ({ ...prev, assignee: e.target.value }))}
+                  className="w-full pl-9 pr-3 py-2 bg-brand-light border border-brand-border rounded-lg text-sm text-text-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all appearance-none"
+                >
+                  <option value="all">Everyone</option>
+                  {members.map(m => (
+                    <option key={m.userId} value={m.userId}>{m.user?.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Priority */}
+            <div className="space-y-1.5 text-left">
+              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">Priority</label>
+              <div className="relative">
+                <AlertCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+                <select
+                  value={filters.priority}
+                  onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                  className="w-full pl-9 pr-3 py-2 bg-brand-light border border-brand-border rounded-lg text-sm text-text-primary focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-all appearance-none"
+                >
+                  <option value="all">Any Priority</option>
+                  {PRIORITIES.map(p => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilters({ priority: "all", assignee: "all", q: "" })}
+                className="text-text-secondary hover:text-text-primary"
+                leftIcon={<X size={14} />}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Kanban Board */}
       <div className="flex-1 overflow-x-auto">

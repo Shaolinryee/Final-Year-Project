@@ -23,7 +23,7 @@ import { Button } from "../components/ui";
 const Profile = () => {
   const navigate = useNavigate();
   const { user: authUser, logout } = useAuth();
-  const [mockUser, setMockUser] = useState(null);
+  const [profileUser, setProfileUser] = useState(null);
   const [stats, setStats] = useState({ projects: 0, tasks: 0, owned: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -34,9 +34,9 @@ const Profile = () => {
   const fetchProfileData = async () => {
     setLoading(true);
 
-    // Get mock user data
+    // Get profile user data
     const { data: user } = await usersApi.getCurrent();
-    setMockUser(user);
+    setProfileUser(user);
 
     // Calculate stats
     const { data: projects } = await projectsApi.getAll();
@@ -108,16 +108,16 @@ const Profile = () => {
           <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12">
             {/* Avatar */}
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 border-4 border-white dark:border-gray-950 flex items-center justify-center text-white text-2xl font-bold">
-              {getInitials(mockUser?.name)}
+              {getInitials(profileUser?.name)}
             </div>
 
             {/* Name & Actions */}
             <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
               <div>
                 <h2 className="text-xl font-bold text-text-primary">
-                  {mockUser?.name || "User"}
+                  {profileUser?.name || "User"}
                 </h2>
-                <p className="text-text-secondary">{authUser?.email || mockUser?.email}</p>
+                <p className="text-text-secondary">{authUser?.email || profileUser?.email}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -192,7 +192,7 @@ const Profile = () => {
           <Mail className="w-5 h-5 text-text-secondary" />
           <div className="flex-1">
             <p className="text-sm text-text-secondary">Email</p>
-            <p className="text-text-primary">{authUser?.email || mockUser?.email}</p>
+            <p className="text-text-primary">{authUser?.email || profileUser?.email}</p>
           </div>
         </div>
 
@@ -200,7 +200,7 @@ const Profile = () => {
           <User className="w-5 h-5 text-text-secondary" />
           <div className="flex-1">
             <p className="text-sm text-text-secondary">Display Name</p>
-            <p className="text-text-primary">{mockUser?.name || "Not set"}</p>
+            <p className="text-text-primary">{profileUser?.name || "Not set"}</p>
           </div>
         </div>
 
@@ -209,8 +209,8 @@ const Profile = () => {
           <div className="flex-1">
             <p className="text-sm text-text-secondary">Member Since</p>
             <p className="text-text-primary">
-              {mockUser?.createdAt
-                ? new Date(mockUser.createdAt).toLocaleDateString("en-US", {
+              {profileUser?.createdAt
+                ? new Date(profileUser.createdAt).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
                     year: "numeric",

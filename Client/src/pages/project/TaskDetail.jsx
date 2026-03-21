@@ -29,9 +29,9 @@ import {
   Upload,
   Play,
 } from "lucide-react";
-import { getCurrentUserId, getUsersStore } from "../../services/mock/users.mock";
+
 import { useProject } from "./ProjectLayout";
-import { tasksApi, commentsApi } from "../../services/api";
+import { tasksApi, commentsApi, attachmentsApi } from "../../services/api";
 import { useNotifications } from "../../context/NotificationContext";
 import { Button, Alert, StatusPill, ConfirmDialog } from "../../components/ui";
 import { TaskFormModal } from "../../components/tasks";
@@ -133,11 +133,9 @@ const TaskDetail = () => {
   const fileInputRef = useRef(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
-  // Get current user info for comments (using local mock store)
-  const localCurrentUserId = getCurrentUserId();
-  const users = getUsersStore();
-  const commentUser = users.find((u) => u.id === localCurrentUserId) || {
-    id: localCurrentUserId,
+  // Current user info for comments (from context)
+  const commentUser = currentUser || {
+    id: null,
     name: "Current User",
     avatarUrl: null,
   };
@@ -153,14 +151,13 @@ const TaskDetail = () => {
     };
   }, []);
 
-  // Load comments and attachments when task changes (mock - in real app these would be API calls)
+  // Load comments and attachments when task changes
   useEffect(() => {
     if (task) {
-      // Reset comments and attachments when task changes
-      setComments([]);
-      setAttachments([]);
+      setComments(task.comments || []);
+      setAttachments(task.attachments || []);
     }
-  }, [taskId]);
+  }, [task]);
 
   // If task is not in context, fetch it
   useEffect(() => {
@@ -365,41 +362,42 @@ const TaskDetail = () => {
   };
 
   // ==================== ATTACHMENTS HANDLERS ====================
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    const newAttachments = files.map((file) => {
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-      
-      return {
-        id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        taskId,
-        projectId,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        previewUrl: isImage || isVideo ? URL.createObjectURL(file) : null,
-        isImage,
-        isVideo,
-        createdAt: new Date().toISOString(),
-      };
-    });
-
-    setAttachments((prev) => [...prev, ...newAttachments]);
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    setFormLoading(true);
+    try {
+      for (const file of files) {
+        const { data: attachment, error: uploadError } = await attachmentsApi.upload(taskId, file);
+        if (uploadError) throw new Error(uploadError);
+        
+        if (attachment) {
+          setAttachments((prev) => [attachment, ...prev]);
+        }
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFormLoading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
-  const handleRemoveAttachment = (attachmentId) => {
-    const attachment = attachments.find((a) => a.id === attachmentId);
-    if (attachment?.previewUrl) {
-      URL.revokeObjectURL(attachment.previewUrl);
+  const handleRemoveAttachment = async (attachmentId) => {
+    try {
+      const { success, error: deleteError } = await attachmentsApi.delete(attachmentId);
+      if (deleteError) throw new Error(deleteError);
+      
+      if (success) {
+        setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      }
+    } catch (err) {
+      setError(err.message);
     }
-    setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
   };
 
   const formatFileSize = (bytes) => {
@@ -429,6 +427,13 @@ const TaskDetail = () => {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const getFullUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    return `${baseUrl}${url}`;
   };
 
   const getTaskKey = () => {
@@ -749,24 +754,24 @@ const TaskDetail = () => {
                           className="flex items-center gap-3 p-3 bg-brand-dark/30 rounded-lg group hover:bg-brand-dark/50 transition-colors"
                         >
                           {/* Preview thumbnail */}
-                          {attachment.isImage && attachment.previewUrl ? (
+                          {attachment.fileType?.startsWith("image/") ? (
                             <div
                               className="w-12 h-12 rounded-lg overflow-hidden bg-black/20 flex-shrink-0 cursor-pointer"
                               onClick={() => setPreviewAttachment(attachment)}
                             >
                               <img
-                                src={attachment.previewUrl}
+                                src={getFullUrl(attachment.fileUrl)}
                                 alt={attachment.fileName}
                                 className="w-full h-full object-cover"
                               />
                             </div>
-                          ) : attachment.isVideo && attachment.previewUrl ? (
+                          ) : attachment.fileType?.startsWith("video/") ? (
                             <div
                               className="w-12 h-12 rounded-lg overflow-hidden bg-black/20 flex-shrink-0 cursor-pointer relative"
                               onClick={() => setPreviewAttachment(attachment)}
                             >
                               <video
-                                src={attachment.previewUrl}
+                                src={getFullUrl(attachment.fileUrl)}
                                 className="w-full h-full object-cover"
                                 muted
                               />
@@ -785,8 +790,8 @@ const TaskDetail = () => {
                             <p className="text-sm text-text-primary truncate">
                               {attachment.fileName}
                             </p>
-                            <p className="text-xs text-text-secondary">
-                              {formatFileSize(attachment.fileSize)}
+                            <p className="text-xs text-text-secondary mt-0.5">
+                              {formatFileSize(attachment.fileSize)} • {attachment.user?.name || 'Unknown'} • {formatDate(attachment.createdAt)}
                             </p>
                           </div>
 
@@ -819,15 +824,15 @@ const TaskDetail = () => {
                         >
                           <X className="w-6 h-6" />
                         </button>
-                        {previewAttachment.isImage ? (
+                        {previewAttachment.fileType?.startsWith("image/") ? (
                           <img
-                            src={previewAttachment.previewUrl}
+                            src={getFullUrl(previewAttachment.fileUrl)}
                             alt={previewAttachment.fileName}
                             className="max-w-full max-h-[80vh] rounded-lg"
                           />
-                        ) : previewAttachment.isVideo ? (
+                        ) : previewAttachment.fileType?.startsWith("video/") ? (
                           <video
-                            src={previewAttachment.previewUrl}
+                            src={getFullUrl(previewAttachment.fileUrl)}
                             controls
                             autoPlay
                             className="max-w-full max-h-[80vh] rounded-lg"

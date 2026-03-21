@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthForm from './components/AuthForm/AuthForm';
 import { useAuth } from '../context/AuthContext';
+import { useGoogleLogin } from '@react-oauth/google';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -9,6 +10,23 @@ const Login = () => {
   const { signIn, session, signInWithGoogle } = useAuth();
   const [googleError, setGoogleError] = useState('');
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
+
+  const googleAuthLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleError('');
+      try {
+        const result = await signInWithGoogle(null, tokenResponse.access_token);
+        if (result.success) {
+          navigate('/home');
+        } else {
+          setGoogleError(result.error || 'Failed to finish Google login');
+        }
+      } catch (error) {
+        setGoogleError(error.message || 'Error occurred during Google login');
+      }
+    },
+    onError: () => setGoogleError('Google Authentication failed'),
+  });
 
   const fields = [
     { id: 'email', label: 'Email', type: 'email', placeholder: 'Enter email address' },
@@ -51,21 +69,9 @@ const Login = () => {
     }
   };
 
-  const handleGoogleAuth = async () => {
+  const handleGoogleAuth = () => {
     setGoogleError('');
-    try {
-      const result = await signInWithGoogle();
-      
-      if (!result.success) {
-        setGoogleError(result.error || 'Failed to sign in with Google');
-      } else {
-        // OAuth redirect will happen automatically
-        // The user will be redirected to Google, then back to /home
-        // The session will be updated via onAuthStateChange in AuthContext
-      }
-    } catch (error) {
-      setGoogleError(error.message || 'Failed to initiate Google sign in');
-    }
+    googleAuthLogin();
   };
 
   return (

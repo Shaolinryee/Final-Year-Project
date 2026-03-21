@@ -60,10 +60,10 @@ const Dashboard = () => {
         const { data: tasks } = await tasksApi.getByProject(project.id);
         if (tasks) {
           completedTasks += tasks.filter((t) => 
-            t.status?.toUpperCase() === "COMPLETED" || t.status?.toUpperCase() === "DONE"
+            t.status?.toLowerCase() === "completed" || t.status?.toLowerCase() === "done"
           ).length;
           inProgressTasks += tasks.filter((t) => 
-            t.status?.toUpperCase() === "IN_PROGRESS"
+            t.status?.toLowerCase().replace('-', '_') === "in_progress"
           ).length;
         }
       }

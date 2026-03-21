@@ -17,6 +17,7 @@ import {
   Activity,
   UserPlus,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import {
   projectsApi,
   tasksApi,
@@ -56,8 +57,6 @@ const ProjectDetail = () => {
     setSearchParams({ tab });
   };
 
-  // Current user (mock - in real app, get from auth context)
-  const [currentUser, setCurrentUser] = useState(null);
 
   // Project state
   const [project, setProject] = useState(null);
@@ -103,14 +102,7 @@ const ProjectDetail = () => {
   const [inviteError, setInviteError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  // Fetch current user
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      const { data } = await usersApi.getCurrent();
-      if (data) setCurrentUser(data);
-    };
-    fetchCurrentUser();
-  }, []);
+  const { user: currentUser } = useAuth();
 
   // Fetch project
   const fetchProject = useCallback(async () => {
@@ -210,11 +202,17 @@ const ProjectDetail = () => {
   const taskCounts = useMemo(() => {
     return {
       all: tasks.length,
-      todo: tasks.filter((t) => t.status?.toUpperCase() === "TODO").length,
-      in_progress: tasks.filter((t) => t.status?.toUpperCase() === "IN_PROGRESS").length,
+      todo: tasks.filter((t) => {
+        const s = t.status?.toLowerCase();
+        return s === "todo";
+      }).length,
+      in_progress: tasks.filter((t) => {
+        const s = t.status?.toLowerCase();
+        return s === "in-progress" || s === "in_progress";
+      }).length,
       completed: tasks.filter((t) => {
-        const s = t.status?.toUpperCase();
-        return s === "COMPLETED" || s === "DONE";
+        const s = t.status?.toLowerCase();
+        return s === "completed" || s === "done";
       }).length,
     };
   }, [tasks]);
@@ -388,7 +386,7 @@ const ProjectDetail = () => {
 
   const handleRevokeInvitation = async (invitationId) => {
     try {
-      const { error } = await invitationsApi.revoke(invitationId);
+      const { error } = await invitationsApi.revoke(projectId, invitationId);
       if (error) throw new Error(error);
 
       setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));

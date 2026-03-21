@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { X, CheckCheck, Loader2, Bell, Eye, ExternalLink } from 'lucide-react';
 import { notificationsApi } from '../../services/api';
-import { NOTIFICATION_TABS } from '../../services/mock/notifications.mock';
+import { NOTIFICATION_TABS } from '../../constants';
 import { useNotifications } from '../../context/NotificationContext';
 import NotificationItem from './NotificationItem';
 import { groupNotificationsByDate } from './groupByDate';

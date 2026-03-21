@@ -5,6 +5,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { notificationsApi } from '../services/api';
+import { useSocket } from './SocketContext';
 
 const NotificationContext = createContext(null);
 
@@ -13,6 +14,24 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { socket } = useSocket();
+
+  // Real-time notification listener
+  useEffect(() => {
+    if (socket) {
+      const handleNewNotification = (notification) => {
+        setNotifications((prev) => {
+          // Check for duplicates
+          if (prev.some(n => n.id === notification.id)) return prev;
+          return [notification, ...prev];
+        });
+        setUnreadCount((prev) => prev + 1);
+      };
+
+      socket.on('new_notification', handleNewNotification);
+      return () => socket.off('new_notification', handleNewNotification);
+    }
+  }, [socket]);
 
   /**
    * Fetch notifications for current user
@@ -141,7 +160,7 @@ export const NotificationProvider = ({ children }) => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    refresh,
+    refreshUnreadCount: refresh,
   };
 
   return (

@@ -37,8 +37,8 @@ const Invitations = () => {
       return;
     }
 
-    // Get pending invitations for user's email
-    const { data: invites, error: invError } = await invitationsApi.getPendingForUser(user.email);
+    // Get pending invitations for user
+    const { data: invites, error: invError } = await invitationsApi.getPendingForUser();
     
     if (invError) {
       setError(invError);
@@ -47,17 +47,6 @@ const Invitations = () => {
     }
 
     setInvitations(invites || []);
-
-    // Fetch project details for each invitation
-    const projectDetails = {};
-    for (const inv of invites || []) {
-      const { data: project } = await projectsApi.getById(inv.projectId);
-      if (project) {
-        projectDetails[inv.projectId] = project;
-      }
-    }
-    setProjects(projectDetails);
-
     setLoading(false);
   };
 
@@ -146,7 +135,7 @@ const Invitations = () => {
       ) : (
         <div className="space-y-4">
           {invitations.map((invitation) => {
-            const project = projects[invitation.projectId];
+            const project = invitation.project;
             const isProcessing = processingId === invitation.id;
 
             return (
