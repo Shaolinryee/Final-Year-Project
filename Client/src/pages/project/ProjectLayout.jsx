@@ -61,10 +61,9 @@ const ProjectLayout = () => {
 
   // Check if current user is owner
   const isOwner = useMemo(() => {
-    if (!currentUser || members.length === 0) return false;
-    const membership = members.find((m) => m.userId === currentUser.id);
-    return membership?.role === "owner";
-  }, [currentUser, members]);
+    if (!currentUser || !project) return false;
+    return project.ownerId === currentUser.id;
+  }, [currentUser, project]);
 
   // Get current user's role in this project
   const userRole = useMemo(() => {

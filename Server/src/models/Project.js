@@ -13,6 +13,10 @@ const Project = sequelize.define('Project', {
     allowNull: false,
     trim: true,
   },
+  key: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   description: {
     type: DataTypes.TEXT,
     defaultValue: '',

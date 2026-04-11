@@ -154,10 +154,32 @@ const formatRelativeTime = (dateString) => {
 };
 
 const ActivityItem = ({ activity }) => {
-  const { type, meta, actor, createdAt } = activity;
-  const config = activityConfig[type] || defaultConfig;
+  const { action, details, user, createdAt } = activity;
+  
+  // Backend provides actions like 'created_project', 'updated_task', etc.
+  const mappedAction = {
+    created_project: 'project_created',
+    updated_project: 'project_updated',
+    deleted_project: 'project_deleted',
+    created_task: 'task_created',
+    updated_task: 'task_updated',
+    deleted_task: 'task_deleted',
+    status_changed: 'task_status_changed',
+    assigned: 'task_assigned',
+    added_member: 'member_invited',
+    removed_member: 'member_removed',
+    commented: 'added_comment',
+  }[action] || action;
+
+  const config = activityConfig[mappedAction] || defaultConfig;
   const Icon = config.icon;
-  const actionText = config.getText(meta || {}, actor);
+
+  // The backend already sends a formatted string in `details` like "Created project XYZ"
+  // Let's lowercase the first letter so it looks natural after the user's name.
+  let actionText = details || "performed an action";
+  if (actionText.length > 0) {
+    actionText = actionText.charAt(0).toLowerCase() + actionText.slice(1);
+  }
 
   return (
     <div className="flex items-start gap-3 py-3">
@@ -170,7 +192,7 @@ const ActivityItem = ({ activity }) => {
       <div className="flex-1 min-w-0">
         <p className="text-sm text-text-primary">
           <span className="font-medium">
-            {actor?.name || "Someone"}
+            {user?.name || "Someone"}
           </span>{" "}
           {actionText}
         </p>

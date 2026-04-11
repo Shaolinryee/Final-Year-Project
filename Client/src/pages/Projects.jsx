@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, FolderKanban, Filter } from "lucide-react";
+import { toast } from "react-toastify";
 import { projectsApi } from "../services/api";
 import {
   Button,
@@ -53,9 +54,10 @@ const Projects = () => {
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
       // Search filter
+      const query = (searchQuery || "").toLowerCase();
       const matchesSearch =
-        project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.key.toLowerCase().includes(searchQuery.toLowerCase());
+        project.name?.toLowerCase().includes(query) ||
+        project.key?.toLowerCase().includes(query);
 
       // Status filter
       const matchesStatus =
@@ -97,18 +99,21 @@ const Projects = () => {
         setProjects((prev) =>
           prev.map((p) => (p.id === editingProject.id ? data : p))
         );
+        toast.success("Project updated successfully");
       } else {
         // Create new project
         const { data, error: createError } = await projectsApi.create(formData);
         if (createError) throw new Error(createError);
 
         setProjects((prev) => [...prev, data]);
+        toast.success("Project created successfully");
       }
 
       setIsFormModalOpen(false);
       setEditingProject(null);
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || "Failed to save project");
     } finally {
       setFormLoading(false);
     }
@@ -127,8 +132,10 @@ const Projects = () => {
       setProjects((prev) => prev.filter((p) => p.id !== deletingProject.id));
       setIsDeleteDialogOpen(false);
       setDeletingProject(null);
+      toast.success("Project deleted successfully");
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || "Failed to delete project");
     } finally {
       setFormLoading(false);
     }

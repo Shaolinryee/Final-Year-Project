@@ -49,6 +49,7 @@ const ProjectOverview = () => {
     members,
     activities,
     isOwner,
+    isAdmin,
     tasksLoading,
     setProject,
     fetchProject,
@@ -145,7 +146,7 @@ const ProjectOverview = () => {
           )}
         </div>
 
-        {isOwner && (
+        {(isOwner || isAdmin) && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -448,7 +449,7 @@ const ProjectOverview = () => {
           <div className="divide-y divide-brand-border">
             {recentActivities.map((activity) => (
               <div key={activity.id} className="px-5 py-3">
-                <p className="text-sm text-text-primary">{activity.message}</p>
+                <p className="text-sm text-text-primary">{activity.details}</p>
                 <p className="text-xs text-text-secondary mt-1">
                   {new Date(activity.createdAt).toLocaleString()}
                 </p>

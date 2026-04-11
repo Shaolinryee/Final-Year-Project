@@ -13,6 +13,8 @@ import { AuthContextProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { SocketProvider } from "./context/SocketContext";
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy load pages
 const HomePage = lazy(() => import("./pages/Marketing/HomePage"));
@@ -288,6 +290,7 @@ function App() {
             <NotificationProvider>
               <ErrorBoundary fallback={<div>Something went wrong</div>}>
                 <RouterProvider router={router} />
+                <ToastContainer position="top-right" autoClose={3000} />
               </ErrorBoundary>
             </NotificationProvider>
           </ThemeProvider>

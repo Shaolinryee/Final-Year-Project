@@ -4,6 +4,7 @@
 
 import { useState, useMemo } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   Plus,
   ListTodo,
@@ -157,17 +158,20 @@ const ProjectTasks = () => {
         setTasks((prev) =>
           prev.map((t) => (t.id === editingTask.id ? data : t))
         );
+        toast.success("Task updated successfully");
       } else {
         const { data, error } = await tasksApi.create(projectId, payload);
         if (error) throw new Error(error);
 
         setTasks((prev) => [...prev, data]);
+        toast.success("Task created successfully");
       }
 
       setIsFormOpen(false);
       setEditingTask(null);
     } catch (err) {
       setFormError(err.message);
+      toast.error(err.message || "Failed to save task");
     } finally {
       setFormLoading(false);
     }
@@ -186,9 +190,11 @@ const ProjectTasks = () => {
     try {
       const { error } = await tasksApi.updateStatus(taskId, normalizeStatusForApi(newStatus));
       if (error) throw new Error(error);
+      toast.success("Task status updated");
     } catch (err) {
       fetchTasks();
       setError(err.message);
+      toast.error(err.message || "Failed to update task status");
     }
   };
 
@@ -215,9 +221,11 @@ const ProjectTasks = () => {
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? data : t))
       );
+      toast.success("Task assignee updated");
     } catch (err) {
       fetchTasks();
       setError(err.message);
+      toast.error(err.message || "Failed to assign task");
     }
   };
 
@@ -234,8 +242,10 @@ const ProjectTasks = () => {
       setTasks((prev) => prev.filter((t) => t.id !== deletingTask.id));
       setIsDeleteOpen(false);
       setDeletingTask(null);
+      toast.success("Task deleted successfully");
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || "Failed to delete task");
     } finally {
       setFormLoading(false);
     }

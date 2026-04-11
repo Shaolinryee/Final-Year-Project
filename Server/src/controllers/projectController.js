@@ -46,7 +46,7 @@ const getProjectById = async (req, res) => {
 // @access  Private
 const createProject = async (req, res) => {
   try {
-    const { name, description, color } = req.body;
+    const { name, description, color, key } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Project name is required' });
@@ -56,6 +56,7 @@ const createProject = async (req, res) => {
       name,
       description,
       color,
+      key,
       ownerId: req.user.id
     });
 
@@ -85,19 +86,21 @@ const createProject = async (req, res) => {
 // @access  Private
 const updateProject = async (req, res) => {
   try {
-    const { name, description, color, status } = req.body;
+    const { name, description, color, status, key } = req.body;
     let project = await Project.findByPk(req.params.id);
 
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    // Check ownership
-    if (project.ownerId !== req.user.id) {
+    // Check ownership or admin
+    const member = await ProjectMember.findOne({ where: { projectId: project.id, userId: req.user.id } });
+    const isAdmin = member && member.role === 'admin';
+    if (project.ownerId !== req.user.id && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this project' });
     }
 
-    project = await project.update({ name, description, color, status });
+    project = await project.update({ name, description, color, status, key });
 
     // Log Activity
     await logActivity({
@@ -130,8 +133,10 @@ const deleteProject = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    // Check ownership
-    if (project.ownerId !== req.user.id) {
+    // Check ownership or admin
+    const member = await ProjectMember.findOne({ where: { projectId: project.id, userId: req.user.id } });
+    const isAdmin = member && member.role === 'admin';
+    if (project.ownerId !== req.user.id && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this project' });
     }
 
