@@ -1,13 +1,13 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
-const Attachment = sequelize.define('Attachment', {
+const Reaction = sequelize.define('Reaction', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
   },
-  taskId: {
+  commentId: {
     type: DataTypes.UUID,
     allowNull: false,
   },
@@ -15,27 +15,13 @@ const Attachment = sequelize.define('Attachment', {
     type: DataTypes.UUID,
     allowNull: false,
   },
-  commentId: {
-    type: DataTypes.UUID,
-    allowNull: true,
-  },
-  fileName: {
+  emoji: {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  fileUrl: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  fileType: {
-    type: DataTypes.STRING,
-  },
-  fileSize: {
-    type: DataTypes.INTEGER,
-  }
 }, {
   timestamps: true,
-  tableName: 'attachments',
+  tableName: 'reactions',
 });
 
-module.exports = Attachment;
+module.exports = Reaction;

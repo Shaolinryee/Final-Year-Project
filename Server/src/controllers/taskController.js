@@ -36,11 +36,16 @@ const getTaskById = async (req, res) => {
         { 
           model: Comment, 
           as: 'comments', 
-          include: [{ model: User, as: 'user', attributes: ['id', 'name', 'avatar'] }] 
+          include: [
+            { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] },
+            { model: Attachment, as: 'attachments' }
+          ] 
         },
         { 
           model: Attachment, 
           as: 'attachments',
+          where: { commentId: null },
+          required: false,
           include: [{ model: User, as: 'user', attributes: ['id', 'name'] }]
         }
       ]
@@ -211,12 +216,22 @@ const updateTask = async (req, res) => {
 
     // Log assignment
     if (req.body.assigneeId && req.body.assigneeId !== oldAssigneeId) {
+      let assigneeName = 'user';
+      if (req.body.assigneeId === req.user.id) {
+        assigneeName = 'oneself';
+      } else {
+        const assigneeUser = await User.findByPk(req.body.assigneeId);
+        if (assigneeUser) {
+          assigneeName = assigneeUser.name;
+        }
+      }
+
       await logActivity({
         userId: req.user.id,
         projectId: task.projectId,
         taskId: task.id,
         action: 'assigned',
-        details: `Assigned task to user`
+        details: `Assigned task to ${assigneeName}`
       });
 
       // Notify new assignee

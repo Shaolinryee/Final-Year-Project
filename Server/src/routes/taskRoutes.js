@@ -11,7 +11,9 @@ const {
 const {
   getTaskComments,
   addComment,
-  deleteComment
+  deleteComment,
+  updateComment,
+  toggleReaction
 } = require('../controllers/commentController');
 const {
   uploadAttachment,
@@ -34,7 +36,9 @@ router.delete('/:id', deleteTask);
 // Comment Routes
 router.get('/:taskId/comments', getTaskComments);
 router.post('/:taskId/comments', addComment);
+router.put('/:taskId/comments/:commentId', updateComment);
 router.delete('/:taskId/comments/:commentId', deleteComment);
+router.post('/:taskId/comments/:commentId/react', toggleReaction);
 
 // Attachment Routes
 router.get('/:taskId/attachments', getTaskAttachments);

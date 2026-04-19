@@ -3,7 +3,8 @@
  * For creating and editing tasks
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Upload, X, Image as ImageIcon, Video, FileText, Paperclip } from "lucide-react";
 import { Modal, Input, Textarea, Select, Button } from "../ui";
 
 const TaskFormModal = ({
@@ -19,6 +20,8 @@ const TaskFormModal = ({
     if (normalized === "completed") return "done";
     if (normalized === "in_progress") return "in-progress";
     if (normalized === "in_review") return "in-review";
+    if (normalized === "rejected") return "rejected";
+    if (normalized === "support") return "support";
     return normalized;
   };
 
@@ -32,6 +35,8 @@ const TaskFormModal = ({
     dueDate: "",
   });
   const [errors, setErrors] = useState({});
+  const [filesToUpload, setFilesToUpload] = useState([]);
+  const fileInputRef = useRef(null);
 
   // Reset form when modal opens/closes or task changes
   useEffect(() => {
@@ -54,6 +59,7 @@ const TaskFormModal = ({
         });
       }
       setErrors({});
+      setFilesToUpload([]);
     }
   }, [isOpen, task]);
 
@@ -82,7 +88,52 @@ const TaskFormModal = ({
       status: normalizeStatus(formData.status),
       priority: formData.priority.toLowerCase(),
     };
-    onSubmit(submitData);
+    onSubmit(submitData, filesToUpload);
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    // Add preview URLs for images
+    const filesWithPreviews = files.map(file => {
+      if (file.type.startsWith('image/')) {
+        file.previewUrl = URL.createObjectURL(file);
+      }
+      return file;
+    });
+
+    setFilesToUpload((prev) => [...prev, ...filesWithPreviews]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Cleanup object URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      filesToUpload.forEach(file => {
+        if (file.previewUrl) {
+          URL.revokeObjectURL(file.previewUrl);
+        }
+      });
+    };
+  }, [filesToUpload]);
+
+  const removeFile = (idx) => {
+    setFilesToUpload((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const getFileIcon = (fileType) => {
+    if (fileType?.startsWith("image/")) return ImageIcon;
+    if (fileType?.startsWith("video/")) return Video;
+    return FileText;
+  };
+  
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   const handleClose = () => {
@@ -94,6 +145,7 @@ const TaskFormModal = ({
       dueDate: "",
     });
     setErrors({});
+    setFilesToUpload([]);
     onClose();
   };
 
@@ -148,6 +200,8 @@ const TaskFormModal = ({
               { value: "in-progress", label: "In Progress" },
               // { value: "in-review", label: "In Review" },
               { value: "done", label: "Done" },
+              { value: "rejected", label: "Rejected" },
+              { value: "support", label: "Support" },
             ]}
           />
 
@@ -170,6 +224,68 @@ const TaskFormModal = ({
           value={formData.dueDate}
           onChange={(e) => handleChange("dueDate", e.target.value)}
         />
+
+        {/* Attachments Upload Section */}
+        <div>
+          <label className="text-xs font-medium text-text-secondary mb-1 block flex items-center gap-1">
+            <Paperclip className="w-3.5 h-3.5" /> Attachments
+          </label>
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border border-dashed border-brand-border rounded-lg p-4 text-center cursor-pointer hover:border-brand/50 hover:bg-brand-dark/30 transition-all group"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Upload className="w-5 h-5 text-text-secondary group-hover:text-brand mx-auto mb-1 transition-colors" />
+            <p className="text-text-secondary text-sm">Click to add files</p>
+          </div>
+
+          {filesToUpload.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {filesToUpload.map((file, idx) => {
+                const FileIcon = getFileIcon(file.type);
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 p-2 bg-brand-dark/30 rounded-lg group"
+                  >
+                    <div className="w-10 h-10 rounded bg-brand-dark/50 flex items-center justify-center flex-shrink-0 overflow-hidden border border-brand-border/30">
+                      {file.type.startsWith('image/') && file.previewUrl ? (
+                        <img src={file.previewUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <FileIcon className="w-5 h-5 text-text-secondary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-text-primary truncate">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-text-secondary mt-0.5">
+                        {formatFileSize(file.size)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFile(idx);
+                      }}
+                      className="p-1 rounded text-text-secondary hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </form>
     </Modal>
   );

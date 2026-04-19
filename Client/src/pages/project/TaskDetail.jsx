@@ -24,10 +24,20 @@ import {
   MoreHorizontal,
   Send,
   Image,
-  Video,
-  FileText,
   Upload,
   Play,
+  XCircle,
+  HelpCircle,
+  Plus,
+  Reply,
+  SmilePlus,
+  Bold,
+  Italic,
+  List,
+  Code2,
+  ListOrdered,
+  Link2,
+  AlertTriangle,
 } from "lucide-react";
 
 import { useProjectOptional } from "./ProjectLayout";
@@ -69,6 +79,18 @@ const statusConfig = {
     label: "Done",
     color: "text-emerald-400",
     bgColor: "bg-emerald-500/20",
+  },
+  rejected: {
+    icon: XCircle,
+    label: "Rejected",
+    color: "text-rose-400",
+    bgColor: "bg-rose-500/20",
+  },
+  support: {
+    icon: HelpCircle,
+    label: "Support",
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/20",
   },
 };
 
@@ -132,7 +154,18 @@ const TaskDetail = () => {
   // Comments state
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [replyTo, setReplyTo] = useState(null); // { id, authorName }
+  const [showDeleteCommentDialog, setShowDeleteCommentDialog] = useState(false);
+  const [commentToDeleteId, setCommentToDeleteId] = useState(null);
+  const [mainCommentAttachments, setMainCommentAttachments] = useState([]);
+  const [replyAttachments, setReplyAttachments] = useState([]);
+  const [uploadTarget, setUploadTarget] = useState('task'); // 'task', 'main', or 'reply'
+  const [taskNotFound, setTaskNotFound] = useState(false);
+  const [isCommentFocused, setIsCommentFocused] = useState(false);
 
   // Attachments state
   const [attachments, setAttachments] = useState([]);
@@ -165,26 +198,30 @@ const TaskDetail = () => {
     }
   }, [task]);
 
-  // If task is not in context, fetch it
+  // Fetch full task data (including attachments/comments) when taskId changes
   useEffect(() => {
-    if (!task && taskId) {
-      const fetchTask = async () => {
+    if (taskId) {
+      const fetchTaskFull = async () => {
         setLoading(true);
-        const { data, error } = await tasksApi.getById(taskId);
-        if (error || !data) {
-          setError("Task not found");
+        const { data, error: fetchErr } = await tasksApi.getById(taskId);
+        if (fetchErr || !data) {
+          if (!task) setTaskNotFound(true);
         } else {
-          // Add to tasks context
+          setTaskNotFound(false);
+          // Update/Add to tasks context with full data
           setTasks((prev) => {
-            if (prev.find((t) => t.id === taskId)) return prev;
+            const exists = prev.find((t) => t.id === taskId);
+            if (exists) {
+              return prev.map((t) => (t.id === taskId ? data : t));
+            }
             return [...prev, data];
           });
         }
         setLoading(false);
       };
-      fetchTask();
+      fetchTaskFull();
     }
-  }, [taskId, task, setTasks]);
+  }, [taskId, setTasks]);
 
   // Initialize edit state when task loads
   useEffect(() => {
@@ -193,6 +230,28 @@ const TaskDetail = () => {
       setEditedDescription(task.description || "");
     }
   }, [task]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && !previewAttachment && !isEditOpen && !isDeleteOpen) {
+        handleClose();
+      }
+      
+      // Shortcut 'M' to focus comment input (if not already focused on an input)
+      if (e.key.toLowerCase() === 'm' && 
+          document.activeElement.tagName !== 'INPUT' && 
+          document.activeElement.tagName !== 'TEXTAREA' &&
+          !isEditOpen && !isDeleteOpen) {
+        setIsCommentFocused(true);
+        // Wait for render then focus
+        setTimeout(() => {
+          document.querySelector('textarea[autoFocus]')?.focus();
+        }, 0);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewAttachment, isEditOpen, isDeleteOpen, navigate, projectId]);
 
   const handleClose = () => {
     navigate(`/projects/${projectId}/tasks`);
@@ -300,11 +359,22 @@ const TaskDetail = () => {
     }
   };
 
-  const handleEditSubmit = async (formData) => {
+  const handleEditSubmit = async (formData, filesToUpload = []) => {
     setFormLoading(true);
     try {
       const { data, error } = await tasksApi.update(taskId, formData);
       if (error) throw new Error(error);
+
+      if (filesToUpload.length > 0) {
+        let uploaded = [];
+        for (const file of filesToUpload) {
+          const { data: attachment } = await attachmentsApi.upload(taskId, file);
+          if (attachment) uploaded.push(attachment);
+        }
+        if (uploaded.length > 0) {
+          setAttachments(prev => [...uploaded, ...prev]);
+        }
+      }
 
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? data : t))
@@ -319,13 +389,19 @@ const TaskDetail = () => {
 
   // ==================== COMMENTS HANDLERS ====================
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    const isReply = !!replyTo;
+    const text = isReply ? replyText : newComment;
+    if (!text.trim()) return;
 
     setCommentSubmitting(true);
     
     try {
-      // Use API to add comment - this will trigger notification
-      const { data: comment, error: commentError } = await commentsApi.add(taskId, newComment.trim());
+      // Use API to add comment - include draft attachments
+      const { data: comment, error: commentError } = await commentsApi.add(taskId, {
+        text: text.trim(),
+        parentId: replyTo?.id,
+        attachmentIds: isReply ? replyAttachments.map(a => a.id) : mainCommentAttachments.map(a => a.id)
+      });
       
       if (commentError) {
         console.error('Failed to add comment:', commentError);
@@ -333,8 +409,33 @@ const TaskDetail = () => {
         return;
       }
       
-      setComments((prev) => [comment, ...prev]);
-      setNewComment("");
+      setComments((prev) => [...prev, comment]);
+      
+      // Remove these attachments from the main attachments list (since they are now in a comment)
+      const attachmentIdsToRemove = (comment.attachments || []).map(a => a.id);
+      setAttachments((prev) => prev.filter(a => !attachmentIdsToRemove.includes(a.id)));
+      
+      // Update global tasks context as well
+      setTasks((prevTasks) => 
+        prevTasks.map(t => 
+          t.id === taskId 
+            ? { 
+                ...t, 
+                attachments: (t.attachments || []).filter(a => !attachmentIdsToRemove.includes(a.id)),
+                comments: [...(t.comments || []), comment]
+              } 
+            : t
+        )
+      );
+
+      if (isReply) {
+        setReplyText("");
+        setReplyAttachments([]);
+      } else {
+        setNewComment("");
+        setMainCommentAttachments([]);
+      }
+      setReplyTo(null);
       
       // Refresh notifications after adding comment (to see bell update)
       refreshNotifications();
@@ -345,8 +446,120 @@ const TaskDetail = () => {
     }
   };
 
-  const handleDeleteComment = (commentId) => {
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
+  const insertStyle = (styleType) => {
+    // Find either the reply textarea or the main one
+    const textarea = document.querySelector('textarea:focus') || document.querySelector('textarea[autoFocus]');
+    if (!textarea) return;
+
+    const isReplyInput = textarea.placeholder.includes('Reply to') || textarea.closest('.ml-8');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = isReplyInput ? replyText : newComment;
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const selected = text.substring(start, end);
+
+    let newText = text;
+    let cursorOffset = 0;
+
+    switch (styleType) {
+      case 'bold':
+        newText = `${before}**${selected || 'bold text'}**${after}`;
+        cursorOffset = start + 2;
+        break;
+      case 'italic':
+        newText = `${before}_${selected || 'italic text'}_${after}`;
+        cursorOffset = start + 1;
+        break;
+      case 'list':
+        newText = `${before}\n- ${selected || 'list item'}${after}`;
+        cursorOffset = start + 3;
+        break;
+      case 'code':
+        newText = `${before}\`\`\`\n${selected || 'code snippet'}\n\`\`\`${after}`;
+        cursorOffset = start + 4;
+        break;
+      default:
+        break;
+    }
+
+    if (isReplyInput) {
+      setReplyText(newText);
+    } else {
+      setNewComment(newText);
+    }
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(cursorOffset, cursorOffset + (selected.length || 10));
+    }, 0);
+  };
+
+  const handleEditorKeyDown = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') {
+        e.preventDefault();
+        insertStyle('bold');
+      }
+      if (e.key === 'i') {
+        e.preventDefault();
+        insertStyle('italic');
+      }
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAddComment();
+    }
+    if (e.key === "Escape") setReplyTo(null);
+  };
+
+  const handleToggleReaction = async (commentId, emoji) => {
+    try {
+      const { data: updatedComment, error } = await commentsApi.react(taskId, commentId, emoji, projectId);
+      if (error) throw new Error(error);
+      
+      if (updatedComment) {
+        setComments(prev => prev.map(c => c.id === commentId ? updatedComment : c));
+      }
+    } catch (err) {
+      console.error('Failed to toggle reaction:', err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    setCommentToDeleteId(commentId);
+    setShowDeleteCommentDialog(true);
+  };
+
+  const confirmDeleteComment = async () => {
+    if (!commentToDeleteId) return;
+    setCommentSubmitting(true);
+    try {
+      const { success, error } = await commentsApi.delete(taskId, commentToDeleteId);
+      if (error) throw new Error(error);
+      if (success) {
+        setComments((prev) => prev.filter((c) => c.id !== commentToDeleteId));
+      }
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    } finally {
+      setCommentSubmitting(false);
+      setShowDeleteCommentDialog(false);
+      setCommentToDeleteId(null);
+    }
+  };
+
+  const handleUpdateComment = async (commentId) => {
+    if (!editingCommentText.trim()) return;
+    try {
+      const { data, error } = await commentsApi.update(taskId, commentId, editingCommentText);
+      if (error) throw new Error(error);
+      setComments(prev => prev.map(c => c.id === commentId ? data : c));
+      setEditingCommentId(null);
+      setEditingCommentText("");
+    } catch (err) {
+      console.error('Failed to update comment:', err);
+    }
   };
 
   const formatCommentTime = (dateStr) => {
@@ -373,19 +586,38 @@ const TaskDetail = () => {
     if (files.length === 0) return;
 
     setFormLoading(true);
+    const target = uploadTarget;
+    
     try {
       for (const file of files) {
         const { data: attachment, error: uploadError } = await attachmentsApi.upload(taskId, file);
         if (uploadError) throw new Error(uploadError);
         
         if (attachment) {
-          setAttachments((prev) => [attachment, ...prev]);
+          if (target === 'task') {
+            // Only add to task-wide attachments if targeted for task
+            setAttachments((prev) => [attachment, ...prev]);
+
+            // Sync with global tasks context
+            setTasks((prevTasks) => 
+              prevTasks.map(t => 
+                t.id === taskId 
+                  ? { ...t, attachments: [attachment, ...(t.attachments || [])] } 
+                  : t
+              )
+            );
+          } else if (target === 'reply') {
+            setReplyAttachments(prev => [...prev, attachment]);
+          } else if (target === 'main') {
+            setMainCommentAttachments(prev => [...prev, attachment]);
+          }
         }
       }
     } catch (err) {
       setError(err.message);
     } finally {
       setFormLoading(false);
+      setUploadTarget('task'); // Reset to default
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -447,6 +679,399 @@ const TaskDetail = () => {
     return `${project?.key || "TASK"}-${index + 1}`;
   };
 
+  const renderCommentContent = (text) => {
+    if (!text) return null;
+    
+    // Convert to markdown-like display
+    let lines = text.split('\n');
+    let content = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        
+        // Mentions
+        line = line.replace(/(@\w+)/g, '###MENTION###$1###MENTION###');
+        
+        // Bold
+        line = line.replace(/\*\*(.*?)\*\*/g, '###BOLD###$1###BOLD###');
+        
+        // Italic
+        line = line.replace(/_(.*?)_/g, '###ITALIC###$1###ITALIC###');
+
+        // Code block (Simple check for ```)
+        if (line.startsWith('```')) {
+            let codeBlock = [];
+            i++;
+            while (i < lines.length && !lines[i].startsWith('```')) {
+                codeBlock.push(lines[i]);
+                i++;
+            }
+            content.push(
+                <pre key={i} className="bg-brand-dark/50 p-4 rounded-lg my-3 font-mono text-xs overflow-x-auto border border-brand-border/50 text-cyan-400">
+                    {codeBlock.join('\n')}
+                </pre>
+            );
+            continue;
+        }
+
+        // List item (Bullet)
+        if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+            content.push(
+                <li key={i} className="ml-4 list-disc text-sm text-text-primary/90">
+                    {line.trim().substring(2)}
+                </li>
+            );
+            continue;
+        }
+
+        // List item (Ordered)
+        const orderedMatch = line.trim().match(/^(\d+)\. /);
+        if (orderedMatch) {
+            content.push(
+                <li key={i} className="ml-4 list-decimal text-sm text-text-primary/90">
+                    {line.trim().substring(orderedMatch[0].length)}
+                </li>
+            );
+            continue;
+        }
+
+        // Processing parts of line (Mentions, Bold, Italic)
+        const parts = line.split('###');
+        const processedLine = parts.map((part, idx) => {
+            if (part.startsWith('MENTION')) return <span key={idx} className="text-brand bg-brand/10 px-1 py-0.5 rounded font-medium">@{part.substring(8)}</span>;
+            if (part.startsWith('BOLD')) return <strong key={idx} className="font-bold text-text-primary">{part.substring(4)}</strong>;
+            if (part.startsWith('ITALIC')) return <em key={idx} className="italic text-text-primary/80">{part.substring(6)}</em>;
+            return part;
+        });
+
+        content.push(<p key={i} className="text-sm text-text-primary/90 leading-relaxed min-h-[1em]">{processedLine}</p>);
+    }
+    
+    return <div className="space-y-1">{content}</div>;
+  };
+
+  const renderComments = (allComments, parentId = null, depth = 0) => {
+    const filtered = allComments.filter(c => c.parentId === parentId);
+    
+    return filtered.map((comment) => {
+      const reactions = comment.reactions || [];
+      const groupedReactions = reactions.reduce((acc, r) => {
+        acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+        return acc;
+      }, {});
+
+      return (
+        <div key={comment.id} className={`${depth > 0 ? "ml-8 mt-4 border-l-2 border-brand-border pl-6" : ""}`}>
+          <div className="flex gap-4 group">
+            {/* Avatar */}
+            <div className="w-10 h-10 rounded bg-brand/30 flex items-center justify-center text-sm font-bold text-brand flex-shrink-0 overflow-hidden shadow-sm">
+              {comment.user?.avatar ? (
+                <img src={getFullUrl(comment.user.avatar)} alt={comment.user.name} className="w-full h-full object-cover" />
+              ) : (
+                getInitials(comment.user?.name || "Unknown")
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-sm font-bold text-text-primary hover:underline cursor-pointer">
+                  {comment.user?.name || "Unknown"}
+                </span>
+                <span className="text-xs text-text-secondary">
+                  {new Date(comment.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric"
+                  })} at {new Date(comment.createdAt).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit"
+                  })}
+                </span>
+              </div>
+
+              {/* Text / Edit Area */}
+              {editingCommentId === comment.id ? (
+                <div className="mt-2">
+                  <textarea
+                    value={editingCommentText}
+                    onChange={(e) => setEditingCommentText(e.target.value)}
+                    className="w-full bg-brand-dark/20 border border-brand-border rounded-lg p-3 text-sm text-text-primary focus:outline-none focus:border-brand/50 resize-none shadow-inner"
+                    rows={3}
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-3 mt-2">
+                    <button 
+                      onClick={() => setEditingCommentId(null)}
+                      className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => handleUpdateComment(comment.id)}
+                      className="text-xs text-brand font-bold hover:text-brand-hover transition-colors"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-text-primary/90 leading-relaxed space-y-2">
+                  {renderCommentContent(comment.text)}
+                </div>
+              )}
+
+              {/* Comment Attachments */}
+              {comment.attachments && comment.attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {comment.attachments.map(att => {
+                    const isImage = att.fileType?.startsWith("image/");
+                    return (
+                      <div 
+                        key={att.id} 
+                        className="relative group rounded-lg overflow-hidden border border-brand-border bg-brand-dark/10 cursor-pointer"
+                        onClick={() => setPreviewAttachment(att)}
+                      >
+                        {isImage ? (
+                          <img 
+                            src={getFullUrl(att.fileUrl)} 
+                            alt={att.fileName} 
+                            className="w-24 h-24 object-cover hover:opacity-80 transition-opacity" 
+                          />
+                        ) : (
+                          <div className="w-24 h-24 flex flex-col items-center justify-center p-2 text-center bg-brand-dark/20">
+                            <Paperclip className="w-6 h-6 text-text-secondary mb-1" />
+                            <span className="text-[10px] text-text-primary truncate w-full px-1">{att.fileName}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Reactions List */}
+              {Object.keys(groupedReactions).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {Object.entries(groupedReactions).map(([emoji, count]) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleToggleReaction(comment.id, emoji)}
+                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs transition-all ${
+                        reactions.some(r => r.userId === currentUser?.id && r.emoji === emoji)
+                          ? "bg-brand/20 border-brand text-brand"
+                          : "bg-brand-dark/20 border-brand-border text-text-secondary hover:border-text-secondary"
+                      }`}
+                    >
+                      <span>{emoji}</span>
+                      <span className="font-medium">{count}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-4 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => {
+                    setReplyTo({ id: comment.id, authorName: comment.user?.name });
+                    // Scroll to input or focus
+                  }}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-xs font-medium"
+                >
+                  <Reply className="w-3.5 h-3.5" />
+                  Reply
+                </button>
+                <div className="relative group/react">
+                  <button className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-xs font-medium">
+                    <SmilePlus className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="absolute bottom-full left-0 mb-2 invisible group-hover/react:visible flex p-1.5 bg-brand-light border border-brand-border rounded-lg shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    {['👍', '🔥', '👀', '🚀', '❤️', '✅'].map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleToggleReaction(comment.id, emoji)}
+                        className="p-1.5 hover:bg-brand-dark/30 rounded transition-colors"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="relative group/more">
+                  <button className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-xs font-medium p-1 rounded hover:bg-brand-dark/30 transition-all">
+                    <MoreHorizontal className="w-3.5 h-3.5" />
+                  </button>
+                  {comment.userId === currentUser?.id && (
+                    <div className="absolute top-full left-0 mt-1 invisible group-hover/more:visible bg-brand-light border border-brand-border rounded-lg shadow-2xl py-1 z-50 w-28 animate-in fade-in slide-in-from-top-1 duration-100 overflow-hidden">
+                      <button 
+                        onClick={() => {
+                          setEditingCommentId(comment.id);
+                          setEditingCommentText(comment.text);
+                        }}
+                        className="w-full text-left px-3 py-2 text-[11px] text-text-primary hover:bg-brand-dark/50 flex items-center gap-2 transition-colors"
+                      >
+                        <Edit2 className="w-3 h-3 text-brand" />
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="w-full text-left px-3 py-2 text-[11px] text-red-400 hover:bg-red-400/10 flex items-center gap-2 transition-colors border-t border-brand-border/30"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Nested Replies */}
+          {renderComments(allComments, comment.id, depth + 1)}
+
+          {/* Inline Reply Form */}
+          {replyTo?.id === comment.id && (
+            <div className={`ml-8 mt-4 border-l-2 border-brand pr-0 pl-6 animate-in slide-in-from-left-2 duration-200`}>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center text-xs font-bold text-brand flex-shrink-0 overflow-hidden shadow-sm">
+                  {commentUser.avatar ? (
+                    <img src={getFullUrl(commentUser.avatar)} alt={commentUser.name} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(commentUser.name)
+                  )}
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-text-secondary mb-2 block font-medium">
+                    Replying to <span className="text-brand">@{replyTo.authorName}</span>
+                  </span>
+                  <div className="bg-brand-dark/20 border border-brand-border rounded-lg overflow-hidden flex flex-col focus-within:border-brand/40 transition-colors shadow-inner">
+                    {/* Header Toolbar (Professional Jira Style) */}
+                    <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-brand-border/50 bg-white/5">
+                      <button type="button" onClick={() => insertStyle('bold')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bold (Ctrl+B)">
+                        <Bold className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => insertStyle('italic')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Italic (Ctrl+I)">
+                        <Italic className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="w-px h-5 bg-brand-border/20 mx-1.5" />
+
+                      <button type="button" onClick={() => insertStyle('list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bullet List">
+                        <List className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => insertStyle('ordered-list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Numbered List">
+                        <ListOrdered className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="w-px h-5 bg-brand-border/20 mx-1.5" />
+
+                      <button type="button" onClick={() => insertStyle('code')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Code Block">
+                        <Code2 className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="flex items-center gap-0.5 ml-auto">
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setUploadTarget('reply');
+                            fileInputRef.current?.click();
+                          }} 
+                          className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" 
+                          title="Attach Files"
+                        >
+                          <Paperclip className="w-4 h-4" />
+                        </button>
+                        <div className="relative group/emojipick">
+                          <button type="button" className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all">
+                            <SmilePlus className="w-4 h-4" />
+                          </button>
+                          <div className="absolute top-full right-0 mt-1 invisible group-hover/emojipick:visible bg-brand-light border border-brand-border rounded-lg shadow-xl p-2 z-50 grid grid-cols-4 gap-1 animate-in zoom-in-95 duration-100">
+                            {['👍', '🔥', '🚀', '✅', '❤️', '👀', '🎉', '💡'].map(e => (
+                              <button 
+                                type="button" 
+                                key={e} 
+                                onClick={() => setReplyText(prev => prev + e)} 
+                                className="p-1.5 hover:bg-brand-dark/30 rounded text-base"
+                              >
+                                {e}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Input Area */}
+                    <textarea
+                      autoFocus
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={handleEditorKeyDown}
+                      rows={5}
+                      className="w-full bg-transparent text-sm text-text-primary px-4 py-3 focus:outline-none resize-none custom-scrollbar"
+                      placeholder={`Reply to ${replyTo.authorName}...`}
+                    />
+                    {/* Draft Attachments Preview in Reply */}
+                    {replyAttachments.length > 0 && (
+                      <div className="px-4 pb-2 flex flex-wrap gap-2">
+                        {replyAttachments.map(att => {
+                          const isImage = att.fileType?.startsWith('image/');
+                          return (
+                            <div key={att.id} className="relative group">
+                              {isImage ? (
+                                <div className="w-14 h-14 rounded overflow-hidden border border-brand-border/50 bg-brand-dark/20 shadow-sm">
+                                  <img src={getFullUrl(att.fileUrl)} className="w-full h-full object-cover" alt="" />
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 px-2 py-1 bg-brand-dark/40 border border-brand-border/30 rounded text-[10px] text-text-secondary h-14">
+                                  <FileText className="w-3 h-3 text-brand" />
+                                  <span className="truncate max-w-[80px]">{att.fileName}</span>
+                                </div>
+                              )}
+                              <button 
+                                type="button"
+                                onClick={() => setReplyAttachments(prev => prev.filter(a => a.id !== att.id))} 
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-rose-600"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Footer Buttons */}
+                  <div className="flex items-center gap-3 mt-3">
+                    <Button 
+                      size="sm" 
+                      onClick={handleAddComment}
+                      disabled={!replyText.trim() || commentSubmitting}
+                    >
+                      {commentSubmitting ? "Saving..." : "Save"}
+                    </Button>
+                    <button 
+                      onClick={() => {
+                        setReplyTo(null);
+                        setReplyText("");
+                      }}
+                      className="text-sm text-text-secondary hover:text-text-primary transition-colors font-medium px-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
   const getAssignee = () => {
     const assigneeId = task?.assigneeId ?? task?.assignedToUserId;
     if (!assigneeId) return null;
@@ -468,8 +1093,9 @@ const TaskDetail = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-brand-light border-l border-brand-border shadow-2xl z-50 animate-slide-in-right transition-colors duration-300">
-        <div className="h-full flex flex-col">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pb-20 mt-10">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" />
+        <div className="relative w-full max-w-5xl bg-brand-light shadow-2xl rounded-xl z-50 flex flex-col h-[85vh] animate-in zoom-in-95 duration-200">
           <div className="h-14 border-b border-brand-border px-6 flex items-center">
             <div className="h-6 w-48 bg-brand-dark/50 rounded animate-pulse" />
           </div>
@@ -483,10 +1109,11 @@ const TaskDetail = () => {
   }
 
   // Error / Not found state
-  if (error || !task) {
+  if (taskNotFound && !loading) {
     return (
-      <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-brand-light border-l border-brand-border shadow-2xl z-50 transition-colors duration-300">
-        <div className="h-full flex flex-col">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pb-20 mt-10">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={handleClose} />
+        <div className="relative w-full max-w-5xl bg-brand-light shadow-2xl rounded-xl z-50 flex flex-col h-[85vh] animate-in zoom-in-95 duration-200">
           <div className="h-14 border-b border-brand-border px-6 flex items-center justify-between">
             <span className="text-text-secondary">Task not found</span>
             <button
@@ -511,14 +1138,15 @@ const TaskDetail = () => {
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 z-40"
-        onClick={handleClose}
-      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 max-h-screen">
+        {/* Backdrop overlay */}
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={handleClose}
+        />
 
-      {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-brand-light border-l border-brand-border shadow-2xl z-50 flex flex-col animate-slide-in-right transition-colors duration-300">
+        {/* Modal Panel */}
+        <div className="relative w-full max-w-[1200px] h-[90vh] bg-brand-light shadow-2xl rounded-xl z-50 flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden border border-brand-border/50">
         {/* Header */}
         <div className="h-14 border-b border-brand-border px-6 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -556,11 +1184,11 @@ const TaskDetail = () => {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex">
-            {/* Main Content */}
-            <div className="flex-1 p-6 border-r border-brand-border">
+        {/* Content Section (Scrollable) */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-brand-light">
+          <div className="flex flex-col lg:flex-row min-h-full">
+            {/* Main Content Component (70%) */}
+            <div className="flex-1 lg:w-[70%] p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-brand-border">
               {/* Error Alert */}
               {error && (
                 <Alert
@@ -691,6 +1319,27 @@ const TaskDetail = () => {
                   </div>
                 )}
 
+                {/* Inline Description Images */}
+                {!isEditing && attachments.filter(a => a.fileType?.startsWith("image/")).length > 0 && (
+                  <div className="mt-4 flex flex-col gap-4 max-w-full overflow-hidden">
+                    {attachments
+                      .filter(a => a.fileType?.startsWith("image/"))
+                      .map(image => (
+                        <div 
+                          key={`desc-img-${image.id}`} 
+                          className="rounded-lg bg-brand-dark/10 border border-brand-border cursor-zoom-in group"
+                          onClick={() => setPreviewAttachment(image)}
+                        >
+                          <img 
+                            src={getFullUrl(image.fileUrl)} 
+                            alt={image.fileName} 
+                            className="w-full h-auto object-contain max-h-[500px]" 
+                          />
+                        </div>
+                    ))}
+                  </div>
+                )}
+
                 {isEditing && permissions.canEdit && (
                   <div className="flex items-center gap-2 mt-3">
                     <Button
@@ -718,21 +1367,27 @@ const TaskDetail = () => {
 
               {/* Attachments Section */}
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-text-secondary mb-2 flex items-center gap-2">
-                  <Paperclip className="w-4 h-4" />
-                  Attachments
-                  {attachments.length > 0 && (
-                    <span className="text-xs bg-brand-dark/30 px-2 py-0.5 rounded-full">
-                      {attachments.length}
-                    </span>
-                  )}
-                </h3>
-
-                {/* Upload Area */}
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border border-dashed border-brand-border rounded-lg p-4 text-center cursor-pointer hover:border-brand/50 hover:bg-brand-dark/30 transition-all group"
-                >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Attachments
+                    {attachments.length > 0 && (
+                      <span className="text-xs bg-brand-dark/30 px-2 py-0.5 rounded-full">
+                        {attachments.length}
+                      </span>
+                    )}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadTarget('task');
+                      fileInputRef.current?.click();
+                    }}
+                    className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-brand-dark/30 transition-colors"
+                    title="Upload attachments"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -741,75 +1396,66 @@ const TaskDetail = () => {
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-                  <Upload className="w-6 h-6 text-text-secondary group-hover:text-brand mx-auto mb-2 transition-colors" />
-                  <p className="text-text-secondary text-sm">
-                    Click to upload files
-                  </p>
-                  <p className="text-text-secondary/60 text-xs mt-1">
-                    Images, videos, PDF, Word, and text files
-                  </p>
                 </div>
 
-                {/* Attachments List */}
+                {/* Attachments Grid */}
                 {attachments.length > 0 && (
-                  <div className="mt-3 space-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {attachments.map((attachment) => {
                       const FileIcon = getFileIcon(attachment.fileType);
+                      const isImage = attachment.fileType?.startsWith("image/");
+                      const isVideo = attachment.fileType?.startsWith("video/");
+                      
                       return (
                         <div
                           key={attachment.id}
-                          className="flex items-center gap-3 p-3 bg-brand-dark/30 rounded-lg group hover:bg-brand-dark/50 transition-colors"
+                          className="relative group rounded-lg overflow-hidden border border-brand-border bg-brand-dark/5 flex flex-col"
                         >
-                          {/* Preview thumbnail */}
-                          {attachment.fileType?.startsWith("image/") ? (
-                            <div
-                              className="w-12 h-12 rounded-lg overflow-hidden bg-black/20 flex-shrink-0 cursor-pointer"
-                              onClick={() => setPreviewAttachment(attachment)}
-                            >
+                          {/* Preview/Thumbnail */}
+                          <div
+                            className="aspect-video w-full bg-black/10 flex items-center justify-center cursor-pointer relative"
+                            onClick={() => setPreviewAttachment(attachment)}
+                          >
+                            {isImage ? (
                               <img
                                 src={getFullUrl(attachment.fileUrl)}
                                 alt={attachment.fileName}
                                 className="w-full h-full object-cover"
                               />
-                            </div>
-                          ) : attachment.fileType?.startsWith("video/") ? (
-                            <div
-                              className="w-12 h-12 rounded-lg overflow-hidden bg-black/20 flex-shrink-0 cursor-pointer relative"
-                              onClick={() => setPreviewAttachment(attachment)}
-                            >
-                              <video
-                                src={getFullUrl(attachment.fileUrl)}
-                                className="w-full h-full object-cover"
-                                muted
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                <Play className="w-4 h-4 text-white" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-brand-dark/50 flex items-center justify-center flex-shrink-0">
-                              <FileIcon className="w-6 h-6 text-text-secondary" />
-                            </div>
-                          )}
-
-                          {/* File info */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-text-primary truncate">
-                              {attachment.fileName}
-                            </p>
-                            <p className="text-xs text-text-secondary mt-0.5">
-                              {formatFileSize(attachment.fileSize)} • {attachment.user?.name || 'Unknown'} • {formatDate(attachment.createdAt)}
-                            </p>
+                            ) : isVideo ? (
+                              <>
+                                <video
+                                  src={getFullUrl(attachment.fileUrl)}
+                                  className="w-full h-full object-cover"
+                                  muted
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <Play className="w-6 h-6 text-white" />
+                                </div>
+                              </>
+                            ) : (
+                              <FileIcon className="w-8 h-8 text-text-secondary opacity-50" />
+                            )}
                           </div>
 
-                          {/* Delete button */}
-                          <button
-                            onClick={() => handleRemoveAttachment(attachment.id)}
-                            className="p-1.5 rounded-lg text-text-secondary hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                            title="Remove attachment"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          {/* File Details Bar */}
+                          <div className="p-2 flex items-center justify-between bg-brand-dark/30 flex-1 min-h-[44px]">
+                            <div className="min-w-0 pr-2">
+                              <p className="text-xs text-text-primary truncate" title={attachment.fileName}>
+                                {attachment.fileName}
+                              </p>
+                              <p className="text-[10px] text-text-secondary mt-0.5">
+                                {formatDate(attachment.createdAt)}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveAttachment(attachment.id)}
+                              className="p-1 rounded text-text-secondary hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                              title="Remove attachment"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -890,102 +1536,199 @@ const TaskDetail = () => {
                   </button>
                 </div>
 
-                {activeTab === "comments" ? (
-                  <div>
-                    {/* Comment Input */}
-                    <div className="mb-4">
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-brand/30 flex items-center justify-center text-xs font-medium text-brand flex-shrink-0">
-                          {getInitials(commentUser.name)}
-                        </div>
-                        <div className="flex-1">
-                          <textarea
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handleAddComment();
-                              }
-                            }}
-                            placeholder="Add a comment... (Press Enter to submit, Shift+Enter for new line)"
-                            rows={2}
-                            className="w-full text-text-primary bg-brand-dark/30 border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand resize-none text-sm"
-                          />
-                          <div className="flex justify-end mt-2">
-                            <Button
-                              size="sm"
-                              onClick={handleAddComment}
-                              disabled={!newComment.trim() || commentSubmitting}
-                              leftIcon={<Send className="w-3 h-3" />}
-                            >
-                              {commentSubmitting ? "Posting..." : "Comment"}
-                            </Button>
+                <div className="mt-8">
+                  {activeTab === "comments" ? (
+                    <div className="comments-tab-content">
+                      {/* Comment Input */}
+                      <div className="mb-8">
+                        <div className="flex gap-4">
+                          <div className="w-10 h-10 rounded-full bg-brand/20 flex items-center justify-center text-sm font-bold text-brand flex-shrink-0 shadow-inner overflow-hidden border border-brand-border/20">
+                            {commentUser.avatar ? (
+                              <img src={getFullUrl(commentUser.avatar)} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              getInitials(commentUser.name)
+                            )}
                           </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Comments List */}
-                    {comments.length > 0 ? (
-                      <div className="space-y-4">
-                        {comments.map((comment) => (
-                          <div key={comment.id} className="flex gap-3 group">
-                            <div className="w-8 h-8 rounded-full bg-brand/30 flex items-center justify-center text-xs font-medium text-brand flex-shrink-0">
-                              {getInitials(comment.authorName)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium text-text-primary">
-                                  {comment.authorName}
-                                </span>
-                                <span className="text-xs text-text-secondary">
-                                  {formatCommentTime(comment.createdAt)}
-                                </span>
-                                {comment.authorUserId === commentUser.id && (
-                                  <button
-                                    onClick={() => handleDeleteComment(comment.id)}
-                                    className="p-1 rounded text-text-secondary hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all ml-auto"
-                                    title="Delete comment"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
+                          <div className="flex-1">
+                            {!isCommentFocused && !newComment ? (
+                              <div 
+                                onClick={() => setIsCommentFocused(true)}
+                                className="group cursor-pointer"
+                              >
+                                <div className="bg-brand-dark/20 border border-brand-border rounded-lg px-4 py-2.5 text-text-secondary/70 text-sm hover:border-brand-border/80 transition-all flex items-center justify-between">
+                                  <span>Add a comment...</span>
+                                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-[10px] text-text-secondary/50 font-mono bg-brand-dark/30 px-1.5 py-0.5 rounded border border-brand-border/20">
+                                      Press M to comment
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <button type="button" className="text-[11px] px-2.5 py-1 rounded bg-brand-dark/30 border border-brand-border/20 text-text-secondary hover:text-text-primary hover:bg-brand-dark/40 transition-all">Suggest a reply...</button>
+                                  <button type="button" className="text-[11px] px-2.5 py-1 rounded bg-brand-dark/30 border border-brand-border/20 text-text-secondary hover:text-text-primary hover:bg-brand-dark/40 transition-all">Status update...</button>
+                                  <button type="button" className="text-[11px] px-2.5 py-1 rounded bg-brand-dark/30 border border-brand-border/20 text-text-secondary hover:text-text-primary hover:bg-brand-dark/40 transition-all">Thanks...</button>
+                                </div>
                               </div>
-                              <p className="text-sm text-text-primary whitespace-pre-wrap break-words">
-                                {comment.content}
-                              </p>
-                            </div>
+                            ) : (
+                              <div className="animate-in fade-in zoom-in-98 duration-200">
+                                <div className="bg-[#1a1e23] border border-brand-border/80 rounded-lg overflow-hidden focus-within:border-brand/50 transition-all shadow-lg ring-1 ring-black/20">
+                                  {/* Toolbar */}
+                                  <div className="h-10 border-b border-brand-border/30 px-2 flex items-center gap-0.5 bg-brand-dark/5">
+                                    <div className="flex items-center gap-0.5 pr-2 mr-2 border-r border-brand-border/20">
+                                      <button type="button" onClick={() => insertStyle('bold')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bold">
+                                        <Bold className="w-4 h-4" />
+                                      </button>
+                                      <button type="button" onClick={() => insertStyle('italic')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Italic">
+                                        <Italic className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-0.5 pr-2 mr-2 border-r border-brand-border/20">
+                                      <button type="button" onClick={() => insertStyle('list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bullet List">
+                                        <List className="w-4 h-4" />
+                                      </button>
+                                      <button type="button" onClick={() => insertStyle('ordered-list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Numbered List">
+                                        <ListOrdered className="w-4 h-4" />
+                                      </button>
+                                    </div>
+
+                                    <button type="button" onClick={() => insertStyle('code')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Code Block">
+                                      <Code2 className="w-4 h-4" />
+                                    </button>
+                                    
+                                    <div className="flex items-center gap-0.5 ml-auto">
+                                      <button 
+                                        type="button"
+                                        onClick={() => {
+                                          setUploadTarget('main');
+                                          fileInputRef.current?.click();
+                                        }} 
+                                        className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" 
+                                        title="Attach Files"
+                                      >
+                                        <Paperclip className="w-4 h-4" />
+                                      </button>
+                                      <div className="relative group/emojipick">
+                                        <button type="button" className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all">
+                                          <SmilePlus className="w-4 h-4" />
+                                        </button>
+                                        <div className="absolute top-full right-0 mt-1 invisible group-hover/emojipick:visible bg-brand-light border border-brand-border rounded-lg shadow-xl p-2 z-50 grid grid-cols-4 gap-1 animate-in zoom-in-95 duration-100">
+                                          {['👍', '🔥', '🚀', '✅', '❤️', '👀', '🎉', '💡'].map(e => (
+                                            <button 
+                                              type="button" 
+                                              key={e} 
+                                              onClick={() => setNewComment(prev => prev + e)} 
+                                              className="p-1.5 hover:bg-brand-dark/30 rounded text-base"
+                                            >
+                                              {e}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <textarea
+                                    autoFocus
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    onKeyDown={handleEditorKeyDown}
+                                    placeholder="Add a comment... (Type @ to mention)"
+                                    rows={4}
+                                    className="w-full bg-transparent text-[13px] text-text-primary px-4 py-3 focus:outline-none resize-none custom-scrollbar"
+                                  />
+
+                                  {/* Draft Attachments Preview in Main Comment */}
+                                  {mainCommentAttachments.length > 0 && (
+                                    <div className="px-4 pb-3 flex flex-wrap gap-3 border-t border-brand-border/10 pt-3 mt-1 bg-brand-dark/5">
+                                      {mainCommentAttachments.map(att => {
+                                        const isImage = att.fileType?.startsWith('image/');
+                                        return (
+                                          <div key={att.id} className="relative group">
+                                            {isImage ? (
+                                              <div className="w-16 h-16 rounded overflow-hidden border border-brand-border/50 bg-brand-dark/20 shadow-sm ring-1 ring-black/5">
+                                                <img src={getFullUrl(att.fileUrl)} className="w-full h-full object-cover" alt="" />
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-1.5 px-2 py-1 bg-brand-dark/40 border border-brand-border/30 rounded text-[10px] text-text-secondary h-16">
+                                                <FileText className="w-4 h-4 text-brand" />
+                                                <span className="truncate max-w-[80px]">{att.fileName}</span>
+                                              </div>
+                                            )}
+                                            <button 
+                                              type="button"
+                                              onClick={() => setMainCommentAttachments(prev => prev.filter(a => a.id !== att.id))} 
+                                              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-rose-600 border border-white/10"
+                                            >
+                                              <X className="w-2.5 h-2.5" />
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-end gap-3 mt-3">
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                      setIsCommentFocused(false);
+                                      setNewComment("");
+                                      setMainCommentAttachments([]);
+                                    }}
+                                    className="text-xs text-text-secondary hover:text-text-primary transition-colors font-medium px-2 py-1"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <Button
+                                    size="sm"
+                                    onClick={handleAddComment}
+                                    disabled={!newComment.trim() || commentSubmitting}
+                                    leftIcon={<Send className="w-3.5 h-3.5" />}
+                                  >
+                                    {commentSubmitting ? "Posting..." : "Comment"}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        ))}
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-text-secondary text-sm text-center py-4">
-                        No comments yet. Be the first to comment.
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    {taskActivities.length > 0 ? (
-                      <ActivityFeed activities={taskActivities} />
-                    ) : (
-                      <p className="text-text-secondary text-sm text-center py-4">
-                        No activity recorded for this task.
-                      </p>
-                    )}
-                  </div>
-                )}
+
+                      {/* Comments List (Threaded) */}
+                      {comments.length > 0 ? (
+                        <div className="space-y-8">
+                          {renderComments(comments)}
+                        </div>
+                      ) : (
+                        <p className="text-text-secondary text-sm text-center py-12">
+                          No comments yet. Be the first to comment.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="history-tab-content">
+                      {taskActivities.length > 0 ? (
+                        <ActivityFeed activities={taskActivities} />
+                      ) : (
+                        <p className="text-text-secondary text-sm text-center py-4">
+                          No activity recorded for this task.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Details Sidebar */}
-            <div className="w-64 p-4 flex-shrink-0">
-              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">
+            {/* Sidebar Details Component (30%) */}
+            <div className="w-full lg:w-[30%] lg:max-w-sm p-6 lg:p-8 flex-shrink-0 bg-brand-dark/5 dark:bg-white/5">
+              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-6">
                 Details
               </h3>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* Assignee */}
                 <div>
                   <label className="text-xs text-text-secondary mb-1 block">Assignee</label>
@@ -1119,26 +1862,27 @@ const TaskDetail = () => {
           onConfirm={handleDelete}
           title="Delete Task"
           message={`Are you sure you want to delete "${task.title}"? This action cannot be undone.`}
-          confirmLabel="Delete Task"
+          confirmText="Delete Task"
           variant="danger"
-          isLoading={formLoading}
+          loading={formLoading}
         />
-      </div>
 
-      {/* CSS for slide-in animation */}
-      <style>{`
-        @keyframes slide-in-right {
-          from {
-            transform: translateX(100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-        .animate-slide-in-right {
-          animation: slide-in-right 0.2s ease-out;
-        }
-      `}</style>
+        <ConfirmDialog
+          isOpen={showDeleteCommentDialog}
+          onClose={() => {
+              setShowDeleteCommentDialog(false);
+              setCommentToDeleteId(null);
+          }}
+          onConfirm={confirmDeleteComment}
+          title="Delete Comment"
+          message="Are you sure you want to delete this comment? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Keep Comment"
+          variant="danger"
+          loading={commentSubmitting}
+        />
+        </div>
+      </div>
     </>
   );
 };

@@ -14,6 +14,8 @@ const statusStyles = {
   in_review: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
   done: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  rejected: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+  support: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
   
   // Priority
   low: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
@@ -30,6 +32,8 @@ const statusLabels = {
   // in_review: "In Review",
   done: "Done",
   completed: "Completed",
+  rejected: "Rejected",
+  support: "Support",
   low: "Low",
   medium: "Medium",
   high: "High",

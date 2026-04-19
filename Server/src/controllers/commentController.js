@@ -1,4 +1,4 @@
-const { Comment, User, Task, Project } = require('../models');
+const { Comment, User, Task, Project, Reaction, Attachment } = require('../models');
 const { sendNotification } = require('../utils/notification');
 const { emitToProject } = require('../socket');
 const { logActivity } = require('../utils/activity');
@@ -16,7 +16,13 @@ const getTaskComments = async (req, res) => {
     const comments = await Comment.findAll({
       where: { taskId },
       include: [
-        { model: User, as: 'user', attributes: ['id', 'name', 'email', 'avatar'] }
+        { model: User, as: 'user', attributes: ['id', 'name', 'email', 'avatar'] },
+        { 
+          model: Reaction, 
+          as: 'reactions', 
+          include: [{ model: User, as: 'user', attributes: ['id', 'name'] }]
+        },
+        { model: Attachment, as: 'attachments' }
       ],
       order: [['createdAt', 'ASC']]
     });
@@ -33,7 +39,7 @@ const getTaskComments = async (req, res) => {
 const addComment = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { text } = req.body;
+    const { text, parentId, attachmentIds } = req.body;
 
     if (!text) {
       return res.status(400).json({ success: false, message: 'Comment text is required' });
@@ -45,13 +51,24 @@ const addComment = async (req, res) => {
     const comment = await Comment.create({
       taskId,
       userId: req.user.id,
-      text
+      text,
+      parentId: parentId || null
     });
+
+    // Link attachments if provided
+    if (attachmentIds && Array.isArray(attachmentIds) && attachmentIds.length > 0) {
+      await Attachment.update(
+        { commentId: comment.id },
+        { where: { id: attachmentIds, taskId } } // Double check taskId for security
+      );
+    }
 
     // Return with user data
     const fullComment = await Comment.findByPk(comment.id, {
       include: [
-        { model: User, as: 'user', attributes: ['id', 'name', 'email', 'avatar'] }
+        { model: User, as: 'user', attributes: ['id', 'name', 'email', 'avatar'] },
+        { model: Reaction, as: 'reactions' },
+        { model: Attachment, as: 'attachments' }
       ]
     });
 
@@ -125,8 +142,94 @@ const deleteComment = async (req, res) => {
   }
 };
 
+// @desc    Toggle reaction on comment
+// @route   POST /api/tasks/:taskId/comments/:commentId/react
+// @access  Private
+const toggleReaction = async (req, res) => {
+  try {
+    const { commentId, taskId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.user.id;
+
+    if (!emoji) return res.status(400).json({ success: false, message: 'Emoji is required' });
+
+    const existingReaction = await Reaction.findOne({
+      where: { commentId, userId, emoji }
+    });
+
+    if (existingReaction) {
+      await existingReaction.destroy();
+      emitToProject(req.body.projectId, 'reaction_removed', { commentId, userId, emoji });
+    } else {
+      await Reaction.create({ commentId, userId, emoji });
+      emitToProject(req.body.projectId, 'reaction_added', { commentId, userId, emoji });
+    }
+
+    const updatedComment = await Comment.findByPk(commentId, {
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] },
+        { 
+          model: Reaction, 
+          as: 'reactions',
+          include: [{ model: User, as: 'user', attributes: ['id', 'name'] }]
+        }
+      ]
+    });
+
+    res.status(200).json({ success: true, data: updatedComment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update comment
+// @route   PUT /api/tasks/:taskId/comments/:commentId
+// @access  Private
+const updateComment = async (req, res) => {
+  try {
+    const { commentId, taskId } = req.params;
+    const { text } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ success: false, message: 'Comment text is required' });
+    }
+
+    const comment = await Comment.findByPk(commentId);
+    if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
+
+    if (comment.userId !== req.user.id) {
+       return res.status(403).json({ success: false, message: 'Not authorized to edit this comment' });
+    }
+
+    comment.text = text;
+    await comment.save();
+
+    const task = await Task.findByPk(taskId);
+    
+    // Return with user data
+    const fullComment = await Comment.findByPk(comment.id, {
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'name', 'email', 'avatar'] },
+        { model: Reaction, as: 'reactions', include: [{ model: User, as: 'user', attributes: ['id', 'name'] }] },
+        { model: Attachment, as: 'attachments' }
+      ]
+    });
+
+    // Emit via Socket
+    if (task?.projectId) {
+      emitToProject(task.projectId, 'comment_updated', { comment: fullComment, taskId, userId: req.user.id });
+    }
+
+    res.status(200).json({ success: true, data: fullComment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getTaskComments,
   addComment,
-  deleteComment
+  deleteComment,
+  updateComment,
+  toggleReaction
 };

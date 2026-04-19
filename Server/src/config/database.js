@@ -34,6 +34,21 @@ const connectDB = async () => {
     await sequelize.authenticate();
     console.log('PostgreSQL Connected Successfully');
     
+    // Add ENUM values manually if they don't exist
+    try {
+      await sequelize.query("ALTER TYPE \"enum_tasks_status\" ADD VALUE 'rejected'");
+      await sequelize.query("ALTER TYPE \"enum_tasks_status\" ADD VALUE 'support'");
+    } catch (err) {}
+
+    try {
+      await sequelize.query("ALTER TYPE \"enum_activities_action\" ADD VALUE 'uploaded_attachment'");
+      await sequelize.query("ALTER TYPE \"enum_activities_action\" ADD VALUE 'deleted_attachment'");
+    } catch (err) {}
+
+    try {
+      await sequelize.query("ALTER TABLE \"attachments\" ADD COLUMN \"commentId\" UUID");
+    } catch (err) {}
+
     // Sync models without destructive alter (prevents Sequelize Postgres sync bugs)
     await sequelize.sync({ alter: false });
     console.log('Database models synced');

@@ -186,7 +186,18 @@ const ProjectLayout = () => {
           if (t.id === data.taskId) {
             const comments = t.comments || [];
             if (comments.some(c => c.id === data.comment.id)) return t;
-            return { ...t, comments: [...comments, data.comment] };
+            
+            // If the comment has attachments, remove them from the main attachments list
+            const attachmentIdsToRemove = (data.comment.attachments || []).map(a => a.id);
+            const filteredAttachments = (t.attachments || []).filter(
+              a => !attachmentIdsToRemove.includes(a.id)
+            );
+            
+            return { 
+              ...t, 
+              comments: [...comments, data.comment],
+              attachments: filteredAttachments
+            };
           }
           return t;
         }));

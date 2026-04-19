@@ -16,9 +16,11 @@ import {
   CheckCircle2,
   X,
   User,
+  XCircle,
+  HelpCircle,
 } from "lucide-react";
 import { useProject } from "./ProjectLayout";
-import { tasksApi } from "../../services/api";
+import { tasksApi, attachmentsApi } from "../../services/api";
 import {
   Button,
   Alert,
@@ -119,6 +121,8 @@ const ProjectTasks = () => {
       todo: tasks.filter((t) => normalizeStatusForUI(t.status) === "todo").length,
       in_progress: tasks.filter((t) => normalizeStatusForUI(t.status) === "in_progress").length,
       done: tasks.filter((t) => normalizeStatusForUI(t.status) === "done").length,
+      rejected: tasks.filter((t) => normalizeStatusForUI(t.status) === "rejected").length,
+      support: tasks.filter((t) => normalizeStatusForUI(t.status) === "support").length,
     };
   }, [tasks]);
 
@@ -140,7 +144,7 @@ const ProjectTasks = () => {
     setIsDeleteOpen(true);
   };
 
-  const handleFormSubmit = async (formData) => {
+  const handleFormSubmit = async (formData, filesToUpload = []) => {
     setFormLoading(true);
     setError(null);
     setFormError(null);
@@ -155,6 +159,12 @@ const ProjectTasks = () => {
         const { data, error } = await tasksApi.update(editingTask.id, payload);
         if (error) throw new Error(error);
 
+        if (filesToUpload.length > 0) {
+          await Promise.all(
+            filesToUpload.map((f) => attachmentsApi.upload(editingTask.id, f))
+          );
+        }
+
         setTasks((prev) =>
           prev.map((t) => (t.id === editingTask.id ? data : t))
         );
@@ -162,6 +172,12 @@ const ProjectTasks = () => {
       } else {
         const { data, error } = await tasksApi.create(projectId, payload);
         if (error) throw new Error(error);
+
+        if (filesToUpload.length > 0) {
+          await Promise.all(
+            filesToUpload.map((f) => attachmentsApi.upload(data.id, f))
+          );
+        }
 
         setTasks((prev) => [...prev, data]);
         toast.success("Task created successfully");
@@ -284,6 +300,8 @@ const ProjectTasks = () => {
             { key: "todo", label: "To Do", icon: AlertCircle },
             { key: "in_progress", label: "In Progress", icon: Clock },
             { key: "done", label: "Done", icon: CheckCircle2 },
+            { key: "rejected", label: "Rejected", icon: XCircle },
+            { key: "support", label: "Support", icon: HelpCircle },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}

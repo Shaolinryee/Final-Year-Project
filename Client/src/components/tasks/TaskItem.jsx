@@ -14,6 +14,8 @@ import {
   Calendar,
   User,
   UserCircle,
+  XCircle,
+  HelpCircle,
 } from "lucide-react";
 import { StatusPill, Button } from "../ui";
 import { canUpdateTaskStatus } from "../../utils/permissions";
@@ -41,6 +43,18 @@ const statusConfig = {
     icon: CheckCircle2,
     label: "Done",
     color: "text-emerald-500",
+    next: "todo",
+  },
+  rejected: {
+    icon: XCircle,
+    label: "Rejected",
+    color: "text-rose-500",
+    next: "todo",
+  },
+  support: {
+    icon: HelpCircle,
+    label: "Support",
+    color: "text-cyan-500",
     next: "todo",
   },
 };

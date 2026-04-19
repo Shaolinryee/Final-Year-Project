@@ -29,7 +29,7 @@ const Task = sequelize.define('Task', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('todo', 'in-progress', 'in-review', 'done'),
+    type: DataTypes.ENUM('todo', 'in-progress', 'in-review', 'done', 'rejected', 'support'),
     defaultValue: 'todo',
   },
   priority: {

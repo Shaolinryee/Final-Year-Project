@@ -7,6 +7,7 @@ const Attachment = require("./Attachment");
 const Activity = require("./Activity");
 const Invitation = require("./Invitation");
 const Notification = require("./Notification");
+const Reaction = require("./Reaction");
 
 // --- USER ASSOCIATIONS ---
 User.hasMany(Project, { foreignKey: "ownerId", as: "ownedProjects" });
@@ -16,6 +17,7 @@ User.hasMany(Task, { foreignKey: "creatorId", as: "createdTasks" });
 User.hasMany(Comment, { foreignKey: "userId", as: "comments" });
 User.hasMany(Notification, { foreignKey: "userId", as: "notifications" });
 User.hasMany(Attachment, { foreignKey: "userId", as: "attachments" });
+User.hasMany(Reaction, { foreignKey: "userId", as: "reactions" });
 
 // --- PROJECT ASSOCIATIONS ---
 Project.belongsTo(User, { foreignKey: "ownerId", as: "owner" });
@@ -41,10 +43,15 @@ Task.hasMany(Notification, { foreignKey: "taskId", as: "notifications", onDelete
 // --- COMMENT ASSOCIATIONS ---
 Comment.belongsTo(Task, { foreignKey: "taskId", as: "task" });
 Comment.belongsTo(User, { foreignKey: "userId", as: "user" });
+Comment.belongsTo(Comment, { foreignKey: "parentId", as: "parent" });
+Comment.hasMany(Comment, { foreignKey: "parentId", as: "replies", onDelete: "CASCADE" });
+Comment.hasMany(Reaction, { foreignKey: "commentId", as: "reactions", onDelete: "CASCADE" });
+Comment.hasMany(Attachment, { foreignKey: "commentId", as: "attachments", onDelete: "CASCADE" });
 
 // --- ATTACHMENT ASSOCIATIONS ---
 Attachment.belongsTo(Task, { foreignKey: "taskId", as: "task" });
 Attachment.belongsTo(User, { foreignKey: "userId", as: "user" });
+Attachment.belongsTo(Comment, { foreignKey: "commentId", as: "comment" });
 
 // --- ACTIVITY ASSOCIATIONS ---
 Activity.belongsTo(Project, { foreignKey: "projectId", as: "project" });
@@ -60,6 +67,10 @@ Notification.belongsTo(User, { foreignKey: "userId", as: "user" });
 Notification.belongsTo(Project, { foreignKey: "projectId", as: "project" });
 Notification.belongsTo(Task, { foreignKey: "taskId", as: "task" });
 
+// --- REACTION ASSOCIATIONS ---
+Reaction.belongsTo(Comment, { foreignKey: "commentId", as: "comment" });
+Reaction.belongsTo(User, { foreignKey: "userId", as: "user" });
+
 module.exports = {
   User,
   Project,
@@ -70,4 +81,5 @@ module.exports = {
   Activity,
   Invitation,
   Notification,
+  Reaction,
 };

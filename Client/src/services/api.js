@@ -320,12 +320,36 @@ export const commentsApi = {
   /**
    * Add a comment to a task
    */
-  add: async (taskId, content) => {
+  add: async (taskId, payload) => {
     try {
-      const response = await api.post(`/tasks/${taskId}/comments`, { text: content });
+      const response = await api.post(`/tasks/${taskId}/comments`, payload);
       return { data: response.data.data, error: null };
     } catch (error) {
       return { data: null, error: error.response?.data?.message || "Failed to add comment" };
+    }
+  },
+
+  /**
+   * Update a comment
+   */
+  update: async (taskId, commentId, text) => {
+    try {
+      const response = await api.put(`/tasks/${taskId}/comments/${commentId}`, { text });
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to update comment" };
+    }
+  },
+
+  /**
+   * Toggle reaction on a comment
+   */
+  react: async (taskId, commentId, emoji, projectId) => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/comments/${commentId}/react`, { emoji, projectId });
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      return { data: null, error: error.response?.data?.message || "Failed to react to comment" };
     }
   },
 
@@ -467,10 +491,13 @@ export const attachmentsApi = {
   /**
    * Upload an attachment to a task
    */
-  upload: async (taskId, file) => {
+  upload: async (taskId, file, commentId = null) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (commentId) {
+        formData.append("commentId", commentId);
+      }
       
       const response = await api.post(`/tasks/${taskId}/attachments`, formData, {
         headers: {

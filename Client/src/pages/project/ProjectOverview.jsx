@@ -1,9 +1,9 @@
 /**
  * ProjectOverview - Main overview page for a project
- * Shows project details, stats, and quick actions
+ * Redesigned for visual hierarchy, cognitive load reduction, and strong SaaS UX
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Edit2,
@@ -14,8 +14,8 @@ import {
   Users,
   Activity,
   Plus,
-  ArrowRight,
   Calendar,
+  Settings,
 } from "lucide-react";
 import { useProject } from "./ProjectLayout";
 import { projectsApi } from "../../services/api";
@@ -26,20 +26,212 @@ import {
   StatusPill,
 } from "../../components/ui";
 import { ProjectFormModal } from "../../components/projects";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  AreaChart,
-  Area,
-  CartesianGrid,
-} from "recharts";
+
+// --- Sub-components for clean modularity ---
+
+const MetricCard = ({ icon, title, value, colorClass }) => (
+  <div className="p-5 rounded-2xl bg-brand-light border border-brand-border shadow-sm flex items-center gap-4 transition-transform hover:-translate-y-0.5 duration-200">
+    <div className={`p-3 rounded-xl flex-shrink-0 ${colorClass}`}>
+      {icon}
+    </div>
+    <div>
+      <p className="text-3xl font-bold text-text-primary">{value}</p>
+      <p className="text-sm font-medium text-text-secondary mt-0.5">{title}</p>
+    </div>
+  </div>
+);
+
+const MetricsSection = ({ taskCounts, membersCount }) => (
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+    <MetricCard 
+      icon={<ListTodo className="w-6 h-6" />} 
+      title="Total Tasks" 
+      value={taskCounts.total} 
+      colorClass="text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400" 
+    />
+    <MetricCard 
+      icon={<Clock className="w-6 h-6" />} 
+      title="In Progress" 
+      value={taskCounts.inProgress} 
+      colorClass="text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400" 
+    />
+    <MetricCard 
+      icon={<CheckCircle2 className="w-6 h-6" />} 
+      title="Completed" 
+      value={taskCounts.done} 
+      colorClass="text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400" 
+    />
+    <MetricCard 
+      icon={<Users className="w-6 h-6" />} 
+      title="Team Members" 
+      value={membersCount} 
+      colorClass="text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400" 
+    />
+  </div>
+);
+
+const ProgressCard = ({ taskCounts }) => {
+  const percent = taskCounts.total > 0 ? Math.round((taskCounts.done / taskCounts.total) * 100) : 0;
+  return (
+    <div className="p-5 rounded-2xl bg-brand-light border border-brand-border shadow-sm flex flex-col md:flex-row md:items-center gap-6">
+      <div className="flex-shrink-0">
+        <h3 className="font-semibold text-text-primary text-base">Project Progress</h3>
+        <span className="text-sm font-medium text-text-secondary">
+          {taskCounts.done} of {taskCounts.total} Tasks Completed
+        </span>
+      </div>
+      <div className="flex-1 flex items-center gap-4">
+        <div className="flex-1 h-2.5 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-emerald-500 rounded-full transition-all duration-700 ease-in-out" 
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <span className="text-lg font-bold text-text-primary min-w-[3rem] text-right">{percent}%</span>
+      </div>
+    </div>
+  );
+};
+
+const UnifiedBoard = ({ tasks, activities, projectId, navigate }) => {
+  const [activeTab, setActiveTab] = useState('tasks');
+  const displayTasks = tasks.slice(0, 8);
+  const displayActivities = activities.slice(0, 8);
+
+  const buttonText = activeTab === 'tasks' ? 'View All Tasks' : 'View All Activity';
+  const buttonAction = () => {
+    navigate(`/projects/${projectId}/${activeTab === 'tasks' ? 'tasks' : 'activity'}`);
+  };
+
+  return (
+    <div className="bg-brand-light rounded-2xl border border-brand-border shadow-sm flex flex-col min-h-[400px]">
+      <div className="px-6 border-b border-brand-border flex items-center justify-between bg-gray-50/50 dark:bg-brand-dark/20 rounded-t-2xl">
+        <div className="flex gap-6">
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`py-4 font-semibold text-sm border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'tasks'
+                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Tasks
+            <span className="bg-gray-100 dark:bg-white/10 text-xs px-2 py-0.5 rounded-full text-text-primary">{tasks.length}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('activity')}
+            className={`py-4 font-semibold text-sm border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'activity'
+                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Activity
+            <span className="bg-gray-100 dark:bg-white/10 text-xs px-2 py-0.5 rounded-full text-text-primary">{activities.length}</span>
+          </button>
+        </div>
+        
+        <Button variant="outline" size="sm" onClick={buttonAction}>
+          {buttonText}
+        </Button>
+      </div>
+      
+      <div className="flex-1 overflow-hidden relative">
+        {/* Tasks View */}
+        {activeTab === 'tasks' && (
+          <div className="h-full overflow-y-auto animate-in fade-in duration-300">
+            {displayTasks.length === 0 ? (
+              <div className="p-10 text-center flex flex-col items-center justify-center h-full">
+                <ListTodo className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
+                <p className="text-text-secondary">No tasks have been created yet.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-brand-border">
+                {displayTasks.map(task => (
+                  <div key={task.id} className="p-5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center justify-between group">
+                    <div className="flex items-center gap-5">
+                      <div className="flex-shrink-0 w-24">
+                        <StatusPill status={task.status} />
+                      </div>
+                      <div>
+                        <h3 
+                          className="font-semibold text-text-primary cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" 
+                          onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+                        >
+                          {task.title}
+                        </h3>
+                        <div className="flex items-center gap-5 mt-1.5 text-xs font-medium text-text-secondary">
+                          {task.dueDate && (
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5" /> 
+                              {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          {task.assignee && (
+                            <span className="flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5" /> 
+                              {task.assignee.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0" 
+                        title="View Task Details" 
+                        onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+                      >
+                        <Edit2 className="w-4 h-4 text-text-secondary hover:text-indigo-600 dark:hover:text-indigo-400" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Activity View */}
+        {activeTab === 'activity' && (
+          <div className="h-full overflow-y-auto p-6 animate-in fade-in duration-300 custom-scrollbar max-h-[500px]">
+            {displayActivities.length === 0 ? (
+              <div className="text-center flex flex-col items-center justify-center p-10 h-full">
+                <Activity className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
+                <p className="text-text-secondary">No recent activity.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {displayActivities.map(activity => (
+                  <div key={activity.id} className="flex gap-4">
+                    <div className="mt-1 flex-shrink-0">
+                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-indigo-50 dark:ring-indigo-500/10" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-text-primary leading-tight">
+                        <span className="font-semibold">{activity.user?.name || "Someone"}</span>{' '}
+                        {activity.details ? activity.details.charAt(0).toLowerCase() + activity.details.slice(1) : "performed an action"}
+                      </p>
+                      <span className="text-xs font-medium text-text-secondary mt-1 block">
+                        {new Date(activity.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+// --- Main Component ---
 
 const ProjectOverview = () => {
   const navigate = useNavigate();
@@ -50,37 +242,15 @@ const ProjectOverview = () => {
     activities,
     isOwner,
     isAdmin,
-    tasksLoading,
     setProject,
-    fetchProject,
   } = useProject();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [error, setError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
-  
-  // Analytics State
-  const [analytics, setAnalytics] = useState(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      if (!project?.id) return;
-      setAnalyticsLoading(true);
-      try {
-        const { data, error } = await projectsApi.getAnalytics(project.id);
-        if (data) setAnalytics(data);
-      } catch (err) {
-        console.error("Failed to fetch analytics:", err);
-      } finally {
-        setAnalyticsLoading(false);
-      }
-    };
-    fetchAnalytics();
-  }, [project?.id]);
-
-  // Stats
+  // Derived Stats
   const taskCounts = {
     total: tasks.length,
     todo: tasks.filter((t) => t.status?.toUpperCase() === "TODO").length,
@@ -88,19 +258,13 @@ const ProjectOverview = () => {
     done: tasks.filter((t) => ["DONE", "COMPLETED"].includes(t.status?.toUpperCase())).length,
   };
 
-  const completionPercent = taskCounts.total > 0
-    ? Math.round((taskCounts.done / taskCounts.total) * 100)
-    : 0;
-
   // Handlers
   const handleUpdate = async (formData) => {
     setFormLoading(true);
     setError(null);
-
     try {
       const { data, error } = await projectsApi.update(project.id, formData);
       if (error) throw new Error(error);
-
       setProject(data);
       setIsEditOpen(false);
     } catch (err) {
@@ -112,11 +276,9 @@ const ProjectOverview = () => {
 
   const handleDelete = async () => {
     setFormLoading(true);
-
     try {
       const { error } = await projectsApi.delete(project.id);
       if (error) throw new Error(error);
-
       navigate("/projects");
     } catch (err) {
       setError(err.message);
@@ -126,338 +288,75 @@ const ProjectOverview = () => {
     }
   };
 
-  // Recent activities (latest 5)
-  const recentActivities = activities.slice(0, 5);
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      {/* 1. Header Section */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="px-2 py-1 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-sm font-mono">
+          <div className="flex items-center gap-3 mb-2.5">
+            <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider">
               {project.key}
             </span>
             <StatusPill status={project.status || "active"} />
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">{project.name}</h1>
+          <h1 className="text-3xl font-extrabold text-text-primary tracking-tight">{project.name}</h1>
           {project.description && (
-            <p className="text-text-secondary mt-2 max-w-2xl">{project.description}</p>
+            <p className="text-text-secondary mt-2 max-w-2xl text-base">{project.description}</p>
           )}
         </div>
 
-        {(isOwner || isAdmin) && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditOpen(true)}
-              leftIcon={<Edit2 className="w-4 h-4" />}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsDeleteOpen(true)}
-              className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Error */}
-      {error && (
-        <Alert variant="error" message={error} onDismiss={() => setError(null)} />
-      )}
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-brand-light border border-brand-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-indigo-500/20">
-              <ListTodo className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{taskCounts.total}</p>
-              <p className="text-sm text-text-secondary">Total Tasks</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-brand-light border border-brand-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-amber-500/20">
-              <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{taskCounts.inProgress}</p>
-              <p className="text-sm text-text-secondary">In Progress</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-brand-light border border-brand-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-500/20">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{completionPercent}%</p>
-              <p className="text-sm text-text-secondary">Complete</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-brand-light border border-brand-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-purple-500/20">
-              <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{members.length}</p>
-              <p className="text-sm text-text-secondary">Members</p>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {(isOwner || isAdmin) && (
+            <>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setIsEditOpen(true)}
+                className="bg-brand-light"
+                title="Project Settings"
+              >
+                <Settings className="w-4 h-4 text-text-secondary" />
+              </Button>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setIsDeleteOpen(true)}
+                className="bg-brand-light text-rose-500 hover:text-rose-600 hover:border-rose-200"
+                title="Delete Project"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+          
+          <Button variant="outline" leftIcon={<ListTodo className="w-4 h-4" />} onClick={() => navigate(`/projects/${project.id}/tasks`)}>
+            Tasks
+          </Button>
+          <Button variant="outline" leftIcon={<Users className="w-4 h-4" />} onClick={() => navigate(`/projects/${project.id}/members`)}>
+            Team
+          </Button>
+          <Button variant="outline" leftIcon={<Activity className="w-4 h-4" />} onClick={() => navigate(`/projects/${project.id}/activity`)}>
+            Log
+          </Button>
+          <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={() => navigate(`/projects/${project.id}/tasks`)}>
+            Add Task
+          </Button>
         </div>
       </div>
 
-      {/* Analytics Visualization */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Status Distribution */}
-        <div className="p-5 rounded-xl bg-brand-light border border-brand-border">
-          <h3 className="font-semibold text-text-primary mb-6">Task Status Distribution</h3>
-          <div className="h-[250px] w-full">
-            {tasks.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: "To Do", value: taskCounts.todo, color: "#6366f1" },
-                      { name: "In Progress", value: taskCounts.inProgress, color: "#f59e0b" },
-                      { name: "Done", value: taskCounts.done, color: "#10b981" },
-                    ].filter(d => d.value > 0)}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {[
-                      { name: "To Do", color: "#6366f1" },
-                      { name: "In Progress", color: "#f59e0b" },
-                      { name: "Done", color: "#10b981" },
-                    ].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#f3f4f6' }}
-                    itemStyle={{ color: '#f3f4f6' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-text-secondary italic">
-                No task data available
-              </div>
-            )}
-          </div>
-          <div className="flex justify-center gap-6 mt-4">
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span className="w-3 h-3 rounded-full bg-[#6366f1]"></span> To Do
-            </div>
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span> In Progress
-            </div>
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span className="w-3 h-3 rounded-full bg-[#10b981]"></span> Done
-            </div>
-          </div>
-        </div>
+      {/* Error handling */}
+      {error && <Alert variant="error" message={error} onDismiss={() => setError(null)} />}
 
-        {/* Completion Trend (Limited data simulated from task updates if needed, but endpoint gives it) */}
-        <div className="p-5 rounded-xl bg-brand-light border border-brand-border">
-          <h3 className="font-semibold text-text-primary mb-6">Velocity (Last 14 Days)</h3>
-          <div className="h-[250px] w-full">
-            {analytics?.completionTrend?.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={analytics.completionTrend.map(d => ({ 
-                  date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                  completed: parseInt(d.count)
-                }))}>
-                  <defs>
-                    <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#9ca3af', fontSize: 10 }} 
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#9ca3af', fontSize: 10 }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#f3f4f6' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="completed" 
-                    stroke="#6366f1" 
-                    fillOpacity={1} 
-                    fill="url(#colorCompleted)" 
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-text-secondary italic gap-2">
-                <Clock className="w-8 h-8 opacity-20" />
-                <span>Not enough historical data to show trend</span>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* 2. Metrics Grid */}
+      <MetricsSection taskCounts={taskCounts} membersCount={members.length} />
 
-        {/* Priority Breakdown */}
-        <div className="p-5 rounded-xl bg-brand-light border border-brand-border">
-          <h3 className="font-semibold text-text-primary mb-6">Priority Breakdown</h3>
-          <div className="h-[250px] w-full">
-            {analytics?.priorityDistribution?.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.priorityDistribution.map(p => ({
-                  name: p.priority.charAt(0).toUpperCase() + p.priority.slice(1),
-                  count: parseInt(p.count),
-                  color: p.priority === 'urgent' ? '#f43f5e' : 
-                         p.priority === 'high' ? '#f59e0b' : 
-                         p.priority === 'medium' ? '#3b82f6' : '#9ca3af'
-                }))}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#9ca3af', fontSize: 10 }} 
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#9ca3af', fontSize: 10 }}
-                  />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#f3f4f6' }}
-                  />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {analytics.priorityDistribution.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={
-                          entry.priority === 'urgent' ? '#f43f5e' : 
-                          entry.priority === 'high' ? '#f59e0b' : 
-                          entry.priority === 'medium' ? '#3b82f6' : '#9ca3af'
-                        } 
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-text-secondary italic">
-                No priority data available
-              </div>
-            )}
-          </div>
-        </div>
+      {/* 3. Progress Bar */}
+      <ProgressCard taskCounts={taskCounts} />
+
+      {/* 4. Unified Board (Tasks & Activity Tabs) */}
+      <div className="grid grid-cols-1 gap-6">
+        <UnifiedBoard tasks={tasks} activities={activities} projectId={project.id} navigate={navigate} />
       </div>
-
-      {/* Progress Bar */}
-      <div className="p-5 rounded-xl bg-brand-light border border-brand-border">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-text-primary">Progress</h3>
-          <span className="text-sm text-text-secondary">
-            {taskCounts.done} of {taskCounts.total} tasks completed
-          </span>
-        </div>
-        <div className="h-3 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
-            style={{ width: `${completionPercent}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Quick Links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <button
-          onClick={() => navigate(`/projects/${project.id}/tasks`)}
-          className="flex items-center justify-between p-4 rounded-xl bg-brand-light border border-brand-border hover:bg-brand-dark/10 dark:hover:bg-white/10 transition-colors group"
-        >
-          <div className="flex items-center gap-3">
-            <ListTodo className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <span className="font-medium text-text-primary">View Tasks</span>
-          </div>
-          <ArrowRight className="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
-        </button>
-
-        <button
-          onClick={() => navigate(`/projects/${project.id}/members`)}
-          className="flex items-center justify-between p-4 rounded-xl bg-brand-light border border-brand-border hover:bg-brand-dark/10 dark:hover:bg-white/10 transition-colors group"
-        >
-          <div className="flex items-center gap-3">
-            <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <span className="font-medium text-text-primary">Team Members</span>
-          </div>
-          <ArrowRight className="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
-        </button>
-
-        <button
-          onClick={() => navigate(`/projects/${project.id}/activity`)}
-          className="flex items-center justify-between p-4 rounded-xl bg-brand-light border border-brand-border hover:bg-brand-dark/10 dark:hover:bg-white/10 transition-colors group"
-        >
-          <div className="flex items-center gap-3">
-            <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-medium text-text-primary">Activity Log</span>
-          </div>
-          <ArrowRight className="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
-        </button>
-      </div>
-
-      {/* Recent Activity */}
-      {recentActivities.length > 0 && (
-        <div className="rounded-xl bg-brand-light border border-brand-border">
-          <div className="px-5 py-4 border-b border-brand-border flex items-center justify-between">
-            <h3 className="font-semibold text-text-primary">Recent Activity</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(`/projects/${project.id}/activity`)}
-            >
-              View All
-            </Button>
-          </div>
-          <div className="divide-y divide-brand-border">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="px-5 py-3">
-                <p className="text-sm text-text-primary">{activity.details}</p>
-                <p className="text-xs text-text-secondary mt-1">
-                  {new Date(activity.createdAt).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Modals */}
       <ProjectFormModal

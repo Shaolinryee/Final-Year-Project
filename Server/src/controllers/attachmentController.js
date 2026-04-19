@@ -21,6 +21,7 @@ const uploadAttachment = async (req, res) => {
     const attachment = await Attachment.create({
       taskId,
       userId: req.user.id,
+      commentId: req.body.commentId || null,
       fileName: req.file.originalname,
       fileUrl: `/uploads/${req.file.filename}`, // Serve this via static middleware
       fileType: req.file.mimetype,
@@ -57,7 +58,10 @@ const getTaskAttachments = async (req, res) => {
     const { taskId } = req.params;
     
     const attachments = await Attachment.findAll({
-      where: { taskId },
+      where: { 
+        taskId,
+        commentId: null 
+      },
       order: [['createdAt', 'DESC']]
     });
 
@@ -102,7 +106,7 @@ const deleteAttachment = async (req, res) => {
 
     // Emit via Socket
     if (task) {
-      emitToProject(task.projectId, 'attachment_deleted', { attachmentId, taskId, userId: req.user.id });
+      emitToProject(task.projectId, 'attachment_deleted', { attachmentId, taskId: task.id, userId: req.user.id });
     }
 
     res.status(200).json({ success: true, message: 'Attachment deleted' });

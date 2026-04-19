@@ -31,7 +31,9 @@ const Activity = sequelize.define('Activity', {
       'removed_member',
       'commented',
       'status_changed',
-      'assigned'
+      'assigned',
+      'uploaded_attachment',
+      'deleted_attachment'
     ),
     allowNull: false,
   },
