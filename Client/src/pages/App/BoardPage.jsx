@@ -15,6 +15,8 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
+  XCircle,
+  HelpCircle,
 } from "lucide-react";
 import { Button, Input, Modal, Textarea, Select, Badge, Drawer } from "../../components/ui";
 import { projectsApi, tasksApi } from "../../services/api";
@@ -23,6 +25,8 @@ const COLUMNS = [
   { id: "todo", title: "To Do", icon: Clock, color: "gray" },
   { id: "in-progress", title: "In Progress", icon: AlertCircle, color: "blue" },
   { id: "done", title: "Done", icon: CheckCircle2, color: "green" },
+  { id: "rejected", title: "Rejected", icon: XCircle, color: "red" },
+  { id: "support", title: "Supported", icon: HelpCircle, color: "cyan" },
 ];
 
 const PRIORITIES = [
@@ -227,7 +231,13 @@ const KanbanColumn = ({
                 ? "text-gray-500"
                 : column.color === "blue"
                 ? "text-blue-500"
-                : "text-green-500"
+                : column.color === "green"
+                ? "text-green-500"
+                : column.color === "red"
+                ? "text-red-500"
+                : column.color === "cyan"
+                ? "text-cyan-500"
+                : "text-gray-500"
             }
           />
           <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -480,7 +490,13 @@ const TaskDetailDrawer = ({ task, onClose, onStatusChange }) => {
                       ? "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
                       : col.id === "in-progress"
                       ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                      : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      : col.id === "done"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      : col.id === "rejected"
+                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                      : col.id === "support"
+                      ? "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400"
+                      : "bg-gray-100 text-gray-600"
                     : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
               >

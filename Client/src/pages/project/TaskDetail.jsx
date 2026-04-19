@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate, useLocation } from "react-router-dom";
 import {
   X,
   Edit2,
@@ -88,7 +88,7 @@ const statusConfig = {
   },
   support: {
     icon: HelpCircle,
-    label: "Support",
+    label: "Supported",
     color: "text-cyan-400",
     bgColor: "bg-cyan-500/20",
   },
@@ -100,10 +100,22 @@ const priorityConfig = {
   high: { label: "High", color: "text-rose-400", bgColor: "bg-rose-500/20" },
 };
 
+const normalizeStatusForApi = (status) => {
+  const normalized = (status || "todo").toLowerCase().replace("_", "-");
+  if (normalized === "completed") return "done";
+  return normalized;
+};
+
 const TaskDetail = () => {
   const { taskId, projectId: routeProjectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const projectContext = useProjectOptional();
+
+  // Get the origin page from location state or default to tasks
+  const getOriginPath = () => {
+    return location.state?.from || `/projects/${routeProjectId}/tasks`;
+  };
 
   if (!projectContext) {
     return <Navigate to={`/projects/${routeProjectId}/tasks`} replace />;
@@ -141,12 +153,15 @@ const TaskDetail = () => {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showAssignMenu, setShowAssignMenu] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
+  const [showDueDateMenu, setShowDueDateMenu] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+  const [editedDueDate, setEditedDueDate] = useState("");
 
   // Notifications context for refreshing after comment
   const { refresh: refreshNotifications } = useNotifications();
@@ -228,6 +243,17 @@ const TaskDetail = () => {
     if (task) {
       setEditedTitle(task.title || "");
       setEditedDescription(task.description || "");
+      // Format date for input (YYYY-MM-DD)
+      if (task.dueDate) {
+        const date = new Date(task.dueDate);
+        if (!isNaN(date.getTime())) {
+          setEditedDueDate(date.toISOString().split('T')[0]);
+        } else {
+          setEditedDueDate("");
+        }
+      } else {
+        setEditedDueDate("");
+      }
     }
   }, [task]);
 
@@ -254,7 +280,7 @@ const TaskDetail = () => {
   }, [previewAttachment, isEditOpen, isDeleteOpen, navigate, projectId]);
 
   const handleClose = () => {
-    navigate(`/projects/${projectId}/tasks`);
+    navigate(getOriginPath());
   };
 
   const handleStatusChange = async (newStatus) => {
@@ -264,12 +290,12 @@ const TaskDetail = () => {
     // Optimistic update
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === taskId ? { ...t, status: newStatus.toUpperCase() } : t
+        t.id === taskId ? { ...t, status: normalizeStatusForApi(newStatus) } : t
       )
     );
 
     try {
-      const { error } = await tasksApi.updateStatus(taskId, newStatus.toUpperCase());
+      const { error } = await tasksApi.updateStatus(taskId, normalizeStatusForApi(newStatus));
       if (error) throw new Error(error);
     } catch (err) {
       fetchTasks();
@@ -322,19 +348,72 @@ const TaskDetail = () => {
     }
   };
 
+  const handleDueDateChange = async (newDueDate) => {
+    setShowDueDateMenu(false);
+    if (!task) return;
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, dueDate: newDueDate } : t
+      )
+    );
+
+    try {
+      const { error } = await tasksApi.update(taskId, { dueDate: newDueDate });
+      if (error) throw new Error(error);
+      setEditedDueDate(newDueDate);
+    } catch (err) {
+      fetchTasks();
+      setError(err.message);
+      // Reset to original value
+      if (task.dueDate) {
+        const date = new Date(task.dueDate);
+        if (!isNaN(date.getTime())) {
+          setEditedDueDate(date.toISOString().split('T')[0]);
+        } else {
+          setEditedDueDate("");
+        }
+      } else {
+        setEditedDueDate("");
+      }
+    }
+  };
+
+  const handleTitleChange = async (newTitle) => {
+    if (!task || newTitle === task.title) return;
+    setIsEditingTitle(false);
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, title: newTitle } : t
+      )
+    );
+
+    try {
+      const { error } = await tasksApi.update(taskId, { title: newTitle });
+      if (error) throw new Error(error);
+      setEditedTitle(newTitle);
+    } catch (err) {
+      fetchTasks();
+      setError(err.message);
+      setEditedTitle(task.title || "");
+    }
+  };
+
   const handleSaveInline = async () => {
     if (!task) return;
     
     setFormLoading(true);
     try {
       const { data, error } = await tasksApi.update(taskId, {
-        title: editedTitle,
         description: editedDescription,
       });
       if (error) throw new Error(error);
       
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? data : t))
+        prev.map((t) => (t.id === taskId ? { ...t, ...data } : t))
       );
       setIsEditing(false);
     } catch (err) {
@@ -351,7 +430,7 @@ const TaskDetail = () => {
       if (error) throw new Error(error);
 
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
-      navigate(`/projects/${projectId}/tasks`);
+      navigate(getOriginPath());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -447,51 +526,66 @@ const TaskDetail = () => {
   };
 
   const insertStyle = (styleType) => {
-    // Find either the reply textarea or the main one
-    const textarea = document.querySelector('textarea:focus') || document.querySelector('textarea[autoFocus]');
-    if (!textarea) return;
+    // Find focused textarea
+    const textarea = document.querySelector('textarea:focus') || document.activeElement;
+    if (!textarea || textarea.tagName !== 'TEXTAREA') return;
 
-    const isReplyInput = textarea.placeholder.includes('Reply to') || textarea.closest('.ml-8');
+    const isDescriptionInput = textarea.id === 'task-description-editor';
+    const isReplyInput = textarea.placeholder?.includes('Reply to') || textarea.closest('.ml-8');
+    
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = isReplyInput ? replyText : newComment;
+    
+    let text = "";
+    if (isDescriptionInput) text = editedDescription;
+    else if (isReplyInput) text = replyText;
+    else text = newComment;
+
     const before = text.substring(0, start);
     const after = text.substring(end);
     const selected = text.substring(start, end);
 
-    let newText = text;
+    let replacement = "";
     let cursorOffset = 0;
 
     switch (styleType) {
       case 'bold':
-        newText = `${before}**${selected || 'bold text'}**${after}`;
-        cursorOffset = start + 2;
+        replacement = `**${selected}**`;
+        cursorOffset = 2;
         break;
       case 'italic':
-        newText = `${before}_${selected || 'italic text'}_${after}`;
-        cursorOffset = start + 1;
+        replacement = `*${selected}*`;
+        cursorOffset = 1;
         break;
       case 'list':
-        newText = `${before}\n- ${selected || 'list item'}${after}`;
-        cursorOffset = start + 3;
+        replacement = `\n- ${selected}`;
+        cursorOffset = 3;
+        break;
+      case 'ordered-list':
+        replacement = `\n1. ${selected}`;
+        cursorOffset = 4;
         break;
       case 'code':
-        newText = `${before}\`\`\`\n${selected || 'code snippet'}\n\`\`\`${after}`;
-        cursorOffset = start + 4;
+        replacement = `\`${selected}\``;
+        cursorOffset = 1;
         break;
       default:
-        break;
+        return;
     }
 
-    if (isReplyInput) {
-      setReplyText(newText);
-    } else {
-      setNewComment(newText);
-    }
+    const newText = before + replacement + after;
+    
+    if (isDescriptionInput) setEditedDescription(newText);
+    else if (isReplyInput) setReplyText(newText);
+    else setNewComment(newText);
 
+    // Maintain focus and selection
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(cursorOffset, cursorOffset + (selected.length || 10));
+      textarea.setSelectionRange(
+        start + cursorOffset,
+        end + cursorOffset
+      );
     }, 0);
   };
 
@@ -1142,7 +1236,15 @@ const TaskDetail = () => {
         {/* Backdrop overlay */}
         <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-          onClick={handleClose}
+          onClick={(e) => {
+            // Don't close if clicking on status menu or its children
+            if (showStatusMenu) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            handleClose();
+          }}
         />
 
         {/* Modal Panel */}
@@ -1156,15 +1258,6 @@ const TaskDetail = () => {
             <span className="text-sm text-text-secondary">{project?.name}</span>
           </div>
           <div className="flex items-center gap-2">
-            {permissions.canEdit && (
-              <button
-                onClick={() => setIsEditOpen(true)}
-                className="p-2 rounded-lg hover:bg-brand-dark/30 text-text-secondary hover:text-text-primary transition-colors"
-                title="Edit task"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-            )}
             {permissions.canDelete && (
               <button
                 onClick={() => setIsDeleteOpen(true)}
@@ -1184,11 +1277,11 @@ const TaskDetail = () => {
           </div>
         </div>
 
-        {/* Content Section (Scrollable) */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-brand-light">
-          <div className="flex flex-col lg:flex-row min-h-full">
-            {/* Main Content Component (70%) */}
-            <div className="flex-1 lg:w-[70%] p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-brand-border">
+        {/* Content Section */}
+        <div className="flex-1 overflow-hidden bg-brand-light">
+          <div className="flex flex-col lg:flex-row h-full">
+            {/* Main Content Component (70%) - Independent Scroll */}
+            <div className="flex-1 lg:w-[70%] p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-brand-border overflow-y-auto custom-scrollbar">
               {/* Error Alert */}
               {error && (
                 <Alert
@@ -1201,19 +1294,28 @@ const TaskDetail = () => {
 
               {/* Title */}
               <div className="mb-6">
-                {isEditing && permissions.canEdit ? (
+                {isEditingTitle && permissions.canEdit ? (
                   <input
                     type="text"
                     value={editedTitle}
                     onChange={(e) => setEditedTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleTitleChange(editedTitle);
+                      } else if (e.key === "Escape") {
+                        setIsEditingTitle(false);
+                        setEditedTitle(task.title || "");
+                      }
+                    }}
+                    onBlur={() => handleTitleChange(editedTitle)}
                     className="w-full text-xl font-semibold text-text-primary bg-brand-dark/30 border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand"
                     autoFocus
                   />
                 ) : (
                   <h1
                     className={`text-xl font-semibold text-text-primary ${permissions.canEdit ? "cursor-pointer hover:text-brand" : ""} transition-colors`}
-                    onClick={() => permissions.canEdit && setIsEditing(true)}
-                    title={permissions.canEdit ? "Click to edit" : undefined}
+                    onClick={() => permissions.canEdit && setIsEditingTitle(true)}
+                    title={permissions.canEdit ? "Click to edit title" : undefined}
                   >
                     {task.title}
                   </h1>
@@ -1225,7 +1327,12 @@ const TaskDetail = () => {
                 {/* Status Dropdown */}
                 <div className="relative">
                   <button
-                    onClick={() => permissions.canChangeStatus && setShowStatusMenu(!showStatusMenu)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (permissions.canChangeStatus) {
+                        setShowStatusMenu(!showStatusMenu);
+                      }
+                    }}
                     disabled={!permissions.canChangeStatus}
                     className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusCfg.bgColor} ${statusCfg.color} ${
                       permissions.canChangeStatus ? "cursor-pointer" : "cursor-default opacity-70"
@@ -1246,7 +1353,10 @@ const TaskDetail = () => {
                           return (
                             <button
                               key={key}
-                              onClick={() => handleStatusChange(key)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(key);
+                              }}
                               className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-brand-dark/30 ${
                                 key === status ? "bg-brand-dark/30" : ""
                               }`}
@@ -1299,16 +1409,30 @@ const TaskDetail = () => {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-text-secondary mb-2">Description</h3>
                 {isEditing && permissions.canEdit ? (
-                  <textarea
-                    value={editedDescription}
-                    onChange={(e) => setEditedDescription(e.target.value)}
-                    rows={4}
-                    className="w-full text-text-primary bg-brand-dark/30 border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand resize-none"
-                    placeholder="Add a description..."
-                  />
+                  <div className="group/editor bg-brand-dark/30 border border-brand-border rounded-lg overflow-hidden focus-within:border-brand transition-all">
+                    <div className="flex items-center gap-1 p-2 border-b border-brand-border bg-brand-dark/20">
+                      <button type="button" onClick={() => insertStyle('bold')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Bold (Ctrl+B)"><Bold className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => insertStyle('italic')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Italic (Ctrl+I)"><Italic className="w-4 h-4" /></button>
+                      <div className="w-px h-4 bg-brand-border mx-1" />
+                      <button type="button" onClick={() => insertStyle('list')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => insertStyle('ordered-list')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                      <div className="w-px h-4 bg-brand-border mx-1" />
+                      <button type="button" onClick={() => insertStyle('code')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Code"><Code2 className="w-4 h-4" /></button>
+                    </div>
+                    <textarea
+                      id="task-description-editor"
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      onKeyDown={handleEditorKeyDown}
+                      rows={6}
+                      className="w-full text-text-primary bg-transparent border-none rounded-none px-3 py-2 focus:outline-none focus:ring-0 resize-none min-h-[150px]"
+                      placeholder="Add a more detailed description..."
+                      autoFocus
+                    />
+                  </div>
                 ) : (
                   <div
-                    className={`text-text-primary bg-brand-dark/30 rounded-lg p-4 min-h-[100px] ${permissions.canEdit ? "cursor-pointer hover:bg-brand-dark/50" : ""} transition-colors`}
+                    className={`text-text-primary bg-brand-dark/30 rounded-lg p-4 min-h-[100px] whitespace-pre-wrap ${permissions.canEdit ? "cursor-pointer hover:bg-brand-dark/50" : ""} transition-colors`}
                     onClick={() => permissions.canEdit && setIsEditing(true)}
                   >
                     {task.description || (
@@ -1348,14 +1472,13 @@ const TaskDetail = () => {
                       disabled={formLoading}
                       leftIcon={<Save className="w-4 h-4" />}
                     >
-                      Save
+                      Save Description
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
                         setIsEditing(false);
-                        setEditedTitle(task.title || "");
                         setEditedDescription(task.description || "");
                       }}
                     >
@@ -1722,8 +1845,8 @@ const TaskDetail = () => {
               </div>
             </div>
 
-            {/* Sidebar Details Component (30%) */}
-            <div className="w-full lg:w-[30%] lg:max-w-sm p-6 lg:p-8 flex-shrink-0 bg-brand-dark/5 dark:bg-white/5">
+            {/* Sidebar Details Component (30%) - Independent Scroll */}
+            <div className="w-full lg:w-[30%] lg:max-w-sm p-6 lg:p-8 flex-shrink-0 bg-brand-dark/5 dark:bg-white/5 overflow-y-auto custom-scrollbar">
               <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-6">
                 Details
               </h3>
@@ -1793,16 +1916,63 @@ const TaskDetail = () => {
                 {/* Due Date */}
                 <div>
                   <label className="text-xs text-text-secondary mb-1 block">Due Date</label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark/30">
-                    <Calendar className="w-4 h-4 text-text-secondary" />
-                    <span className={`text-sm ${
-                      task.dueDate && new Date(task.dueDate) < new Date()
-                        ? "text-rose-400"
-                        : "text-text-primary"
-                    }`}>
-                      {formatDate(task.dueDate)}
-                    </span>
-                  </div>
+                  {showDueDateMenu && permissions.canEdit ? (
+                    <div className="relative">
+                      <div className="fixed inset-0 z-10" onClick={() => setShowDueDateMenu(false)} />
+                      <div className="absolute left-0 top-full mt-1 w-full bg-brand-light rounded-lg shadow-lg border border-brand-border p-3 z-20">
+                        <input
+                          type="date"
+                          value={editedDueDate}
+                          onChange={(e) => setEditedDueDate(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleDueDateChange(editedDueDate);
+                            } else if (e.key === "Escape") {
+                              setShowDueDateMenu(false);
+                              setEditedDueDate(task.dueDate || "");
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-brand-dark/30 border border-brand-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-brand"
+                          autoFocus
+                        />
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button
+                            onClick={() => {
+                              setShowDueDateMenu(false);
+                              setEditedDueDate(task.dueDate || "");
+                            }}
+                            className="px-3 py-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleDueDateChange(editedDueDate)}
+                            className="px-3 py-1 text-xs bg-brand text-white rounded hover:bg-brand-hover transition-colors"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark/30 ${
+                        permissions.canEdit ? "cursor-pointer hover:bg-brand-dark/50" : ""
+                      } transition-colors`}
+                      onClick={() => permissions.canEdit && setShowDueDateMenu(true)}
+                      title={permissions.canEdit ? "Click to edit due date" : undefined}
+                    >
+                      <Calendar className="w-4 h-4 text-text-secondary" />
+                      <span className={`text-sm ${
+                        task.dueDate && new Date(task.dueDate) < new Date()
+                          ? "text-rose-400"
+                          : "text-text-primary"
+                      }`}>
+                        {formatDate(task.dueDate)}
+                      </span>
+                      {permissions.canEdit && <ChevronDown className="w-4 h-4 text-text-secondary ml-auto" />}
+                    </div>
+                  )}
                 </div>
 
                 {/* Project */}
@@ -1829,6 +1999,17 @@ const TaskDetail = () => {
                     <span className="text-sm text-text-primary">
                       {formatDate(task.createdAt)}
                     </span>
+                  </div>
+                </div>
+
+                {/* Reporter */}
+                <div>
+                  <label className="text-xs text-text-secondary mb-1 block">Reporter</label>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark/30">
+                    <div className="w-5 h-5 rounded-full bg-slate-500/30 flex items-center justify-center text-[10px] font-medium text-text-secondary">
+                      {getInitials(task.creator?.name)}
+                    </div>
+                    <span className="text-sm text-text-primary">{task.creator?.name || 'Unknown'}</span>
                   </div>
                 </div>
 

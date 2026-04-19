@@ -156,7 +156,7 @@ const UnifiedBoard = ({ tasks, activities, projectId, navigate }) => {
                       <div>
                         <h3 
                           className="font-semibold text-text-primary cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" 
-                          onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+                          onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`, { state: { from: `/projects/${projectId}/overview` } })}
                         >
                           {task.title}
                         </h3>
@@ -183,7 +183,7 @@ const UnifiedBoard = ({ tasks, activities, projectId, navigate }) => {
                         size="sm" 
                         className="h-8 w-8 p-0" 
                         title="View Task Details" 
-                        onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+                        onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`, { state: { from: `/projects/${projectId}/overview` } })}
                       >
                         <Edit2 className="w-4 h-4 text-text-secondary hover:text-indigo-600 dark:hover:text-indigo-400" />
                       </Button>

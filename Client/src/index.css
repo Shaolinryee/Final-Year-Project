@@ -9,6 +9,15 @@ body,
   height: 100%;
 }
 
+/* Hidden scrollbar utility — scrollable but no visible bar */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;             /* Chrome/Safari */
+}
+
 /* =========================
    CUSTOM THEME (ONE BLOCK ONLY)
 ========================= */

@@ -455,7 +455,7 @@ const ProjectTasks = () => {
               onEdit={canEditAny ? handleEdit : undefined}
               onDelete={canDelete ? handleDeleteClick : undefined}
               onAssign={canAssign ? handleAssign : undefined}
-              onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+              onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`, { state: { from: `/projects/${projectId}/tasks` } })}
             />
           ))}
         </div>
@@ -473,7 +473,7 @@ const ProjectTasks = () => {
               onEdit={canEditAny ? handleEdit : undefined}
               onDelete={canDelete ? handleDeleteClick : undefined}
               onAssign={canAssign ? handleAssign : undefined}
-              onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+              onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`, { state: { from: `/projects/${projectId}/tasks` } })}
               compact
             />
           ))}

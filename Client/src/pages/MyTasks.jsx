@@ -32,28 +32,40 @@ const MyTasks = () => {
   const fetchData = async () => {
     setLoading(true);
 
-    // Get current user
-    const { data: user } = await usersApi.getCurrent();
-    setCurrentUser(user);
-
-    // Get all projects
-    const { data: projectsData } = await projectsApi.getAll();
-    setProjects(projectsData || []);
-
-    // Get tasks from all projects and filter by assigned user
-    const allTasks = [];
-    for (const project of projectsData || []) {
-      const { data: projectTasks } = await tasksApi.getByProject(project.id);
-      if (projectTasks) {
-        const assigned = projectTasks
-          .filter((t) => t.assignedToUserId === user?.id)
-          .map((t) => ({ ...t, projectName: project.name, projectKey: project.key }));
-        allTasks.push(...assigned);
+    try {
+      // Get current user first
+      const { data: user } = await usersApi.getCurrent();
+      if (!user) {
+        setLoading(false);
+        return;
       }
-    }
+      setCurrentUser(user);
 
-    setTasks(allTasks);
-    setLoading(false);
+      // Get all projects
+      const { data: projectsData } = await projectsApi.getAll();
+      setProjects(projectsData || []);
+
+      // Get tasks from all projects and filter by assigned user
+      const allTasks = [];
+      for (const project of projectsData || []) {
+        const { data: projectTasks } = await tasksApi.getByProject(project.id);
+        if (projectTasks) {
+          const assigned = projectTasks
+            .filter((t) => {
+              // Check both possible assignee fields
+              return t.assignedToUserId === user.id || t.assigneeId === user.id;
+            })
+            .map((t) => ({ ...t, projectName: project.name, projectKey: project.key, projectId: project.id }));
+          allTasks.push(...assigned);
+        }
+      }
+
+      setTasks(allTasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getProjectById = (id) => projects.find((p) => p.id === id);

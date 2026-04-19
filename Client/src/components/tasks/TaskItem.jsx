@@ -157,7 +157,8 @@ const TaskItem = ({
     if (
       e.target.closest('button') ||
       e.target.closest('[role="menu"]') ||
-      e.target.closest('.dropdown-trigger')
+      e.target.closest('.dropdown-trigger') ||
+      e.target.closest('[data-status-button]') // Add status button exclusion
     ) {
       return;
     }
@@ -185,6 +186,7 @@ const TaskItem = ({
                 : "cursor-default opacity-70"
             }`}
             title={canChangeStatus ? "Change status" : "You cannot change this task's status"}
+            data-status-button
           >
             <StatusIcon className="w-5 h-5" />
           </button>
@@ -195,6 +197,7 @@ const TaskItem = ({
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setShowStatusMenu(false)}
+                data-status-button
               />
               <div className="absolute left-0 top-full mt-1 w-40 bg-brand-light rounded-lg shadow-lg border border-brand-border py-1 z-20">
                 {Object.entries(statusConfig).map(([key, cfg]) => {
@@ -208,6 +211,7 @@ const TaskItem = ({
                           ? "bg-brand-dark/5 dark:bg-white/5"
                           : ""
                       }`}
+                      data-status-button
                     >
                       <Icon className={`w-4 h-4 ${cfg.color}`} />
                       <span className="text-text-primary">
@@ -233,27 +237,17 @@ const TaskItem = ({
             >
               {task.title}
             </h4>
-            {/* Edit/Delete buttons - only show if user has permission */}
-            {(onEdit || onDelete) && (
+            {/* Delete button - only show if user has permission */}
+            {onDelete && (
               <div className="flex items-center gap-1 flex-shrink-0">
-                {onEdit && (
-                  <button
-                    onClick={() => onEdit(task)}
-                    className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-brand-dark/10 dark:hover:bg-white/10 rounded-lg transition-colors"
-                    title="Edit task"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    onClick={() => onDelete(task)}
-                    className="p-1.5 text-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-                    title="Delete task"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
+                <button
+                  onClick={() => onDelete(task)}
+                  className="p-1.5 text-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
+                  title="Delete task"
+                  data-status-button
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             )}
           </div>
@@ -282,6 +276,7 @@ const TaskItem = ({
                     ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                     : "bg-brand-dark/10 text-text-secondary dark:bg-white/10"
                 } ${onAssign ? "hover:opacity-80 cursor-pointer" : "cursor-default"}`}
+                data-status-button
               >
                 {assignee ? (
                   <>
@@ -305,6 +300,7 @@ const TaskItem = ({
                   <div
                     className="fixed inset-0 z-10"
                     onClick={() => setShowAssignMenu(false)}
+                    data-status-button
                   />
                   <div className="absolute left-0 top-full mt-1 w-48 bg-brand-light rounded-lg shadow-lg border border-brand-border py-1 z-20 max-h-60 overflow-y-auto">
                     {/* Unassign Option */}
@@ -313,6 +309,7 @@ const TaskItem = ({
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-brand-dark/10 dark:hover:bg-white/10 ${
                         !taskAssigneeId ? "bg-brand-dark/5 dark:bg-white/5" : ""
                       }`}
+                      data-status-button
                     >
                       <UserCircle className="w-4 h-4 text-text-secondary" />
                       <span className="text-text-primary">Unassigned</span>
@@ -330,6 +327,7 @@ const TaskItem = ({
                         className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-brand-dark/10 dark:hover:bg-white/10 ${
                           taskAssigneeId === userId ? "bg-brand-dark/5 dark:bg-white/5" : ""
                         }`}
+                        data-status-button
                       >
                         <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600 dark:text-indigo-400">
                           {getInitials(user?.name)}

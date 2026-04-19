@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search, X, Loader2, ListTodo, Folder, Calendar, User, ArrowRight } from "lucide-react";
 import { tasksApi } from "../../services/api";
 import { StatusPill } from "../ui";
@@ -10,6 +10,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
+  const location = useLocation();
   const navigate = useNavigate();
 
   // Handle focus when opened
@@ -58,7 +59,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
   };
 
   const handleSelect = (task) => {
-    navigate(`/projects/${task.projectId}/tasks/${task.id}`);
+    navigate(`/projects/${task.projectId}/tasks/${task.id}`, { state: { from: location.pathname } });
     onClose();
     setQuery("");
   };
