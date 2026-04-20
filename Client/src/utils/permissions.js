@@ -91,16 +91,16 @@ export const canManageMembers = (role) => {
 
 /**
  * Can change member roles
- * Owner only (Admin cannot change roles)
+ * Owner + Admin (with restrictions on who they can change)
  */
 export const canChangeRoles = (role) => {
-  return role?.toLowerCase() === ROLES.OWNER;
+  return hasMinimumRole(role, ROLES.ADMIN);
 };
 
 /**
  * Can remove a specific member based on current user's role and target member's role
  * Owner: Can remove Admin + Member
- * Admin: Can remove Member only
+ * Admin: Can remove Member + Admin (but not Owner)
  * Member: Cannot remove anyone
  */
 export const canRemoveMember = (currentUserRole, targetMemberRole) => {
@@ -108,17 +108,20 @@ export const canRemoveMember = (currentUserRole, targetMemberRole) => {
   const targetLevel = getRoleLevel(targetMemberRole);
   
   // Cannot remove yourself (handled separately)
+  if (currentUserRole === targetMemberRole) return false;
+  
   // Cannot remove someone with equal or higher role
   if (currentLevel <= targetLevel) return false;
   
   // Owner can remove anyone below them
   if (currentUserRole?.toLowerCase() === ROLES.OWNER) return true;
   
-  // Admin can only remove members
+  // Admin can remove members and other admins, but not owners
   if (currentUserRole?.toLowerCase() === ROLES.ADMIN) {
-    return targetMemberRole?.toLowerCase() === ROLES.MEMBER;
+    return targetMemberRole?.toLowerCase() !== ROLES.OWNER;
   }
   
+  // Members cannot remove anyone
   return false;
 };
 
@@ -150,10 +153,37 @@ export const canDeleteTask = (role) => {
 
 /**
  * Can assign/reassign tasks
- * Owner + Admin
+ * Owner + Admin + Member
  */
 export const canAssignTasks = (role) => {
-  return hasMinimumRole(role, ROLES.ADMIN);
+  // All members can assign tasks
+  return role?.toLowerCase() === ROLES.OWNER || role?.toLowerCase() === ROLES.ADMIN || role?.toLowerCase() === ROLES.MEMBER;
+};
+
+/**
+ * Can update a specific task
+ * Owner + Admin can edit any task
+ * Member can update basic properties (status, priority, assignee) of any task, but only edit structural properties of their own assigned tasks
+ */
+export const canUpdateTask = (role, task, currentUserId) => {
+  // Owner and Admin can edit any task
+  if (hasMinimumRole(role, ROLES.ADMIN)) return true;
+  
+  // Member can update basic properties (status, priority, assignee) of any task
+  if (role?.toLowerCase() === ROLES.MEMBER) {
+    return true; // Allow status, priority, and assignee changes
+  }
+  
+  return false;
+};
+
+/**
+ * Can update basic task properties (description, priority, attachments)
+ * Owner + Admin + Member (all members can update basic properties)
+ */
+export const canUpdateBasicTaskProperties = (role) => {
+  // All members can update basic task properties
+  return role?.toLowerCase() === ROLES.OWNER || role?.toLowerCase() === ROLES.ADMIN || role?.toLowerCase() === ROLES.MEMBER;
 };
 
 /**
@@ -174,17 +204,17 @@ export const canEditTask = (role, task, currentUserId) => {
 };
 
 /**
- * Can update task status
+ * Can update task status, priority, and assignee
  * Owner + Admin can update any task
- * Member can only update their assigned tasks
+ * Member can update any task's status, priority, and assignee
  */
 export const canUpdateTaskStatus = (role, task, currentUserId) => {
   // Owner and Admin can update any task
   if (hasMinimumRole(role, ROLES.ADMIN)) return true;
   
-  // Member can only update tasks assigned to them
+  // Member can update any task's status, priority, and assignee
   if (role?.toLowerCase() === ROLES.MEMBER) {
-    return task?.assignedToUserId === currentUserId;
+    return true; // Allow all members to update status, priority, and assignee
   }
   
   return false;
@@ -320,6 +350,7 @@ export default {
   canUpdateTaskStatus,
   canAddComments,
   canAddAttachments,
+  canUpdateBasicTaskProperties,
   canDeleteOwnComment,
   canViewActivity,
   getUserRole,

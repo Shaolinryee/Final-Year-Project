@@ -11,10 +11,14 @@ const Invitation = sequelize.define(
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Made optional for userId-based invitations
       validate: {
         isEmail: true,
       },
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: true, // New field for user-based invitations
     },
     projectId: {
       type: DataTypes.UUID,
@@ -45,6 +49,14 @@ const Invitation = sequelize.define(
   {
     tableName: "invitations",
     timestamps: true,
+    // Add validation to ensure either email or userId is provided
+    validate: {
+      atLeastOneIdentifier() {
+        if (!this.email && !this.userId) {
+          throw new Error('Either email or userId must be provided');
+        }
+      }
+    }
   }
 );
 

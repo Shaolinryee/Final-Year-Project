@@ -21,11 +21,11 @@ const comparePassword = async (password, hashedPassword) => {
 };
 
 // Generate JWT Token
-const generateToken = (userId, userEmail, userName) => {
+const generateToken = (userId, userEmail, userName, expiresIn = null) => {
   return jwt.sign(
     { userId, email: userEmail, name: userName },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    { expiresIn: expiresIn || process.env.JWT_EXPIRE || '7d' }
   );
 };
 

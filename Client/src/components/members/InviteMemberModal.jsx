@@ -4,8 +4,9 @@
  */
 
 import { useState } from "react";
-import { Mail, UserPlus, X } from "lucide-react";
-import { Modal, Button, Input, Select } from "../ui";
+import { UserPlus, X } from "lucide-react";
+import { Modal, Button, Select } from "../ui";
+import UserSearchDropdown from "../ui/UserSearchDropdown";
 
 const InviteMemberModal = ({
   isOpen,
@@ -15,10 +16,12 @@ const InviteMemberModal = ({
   isLoading,
   loading = false,
   error = null,
+  excludeIds = [],
+  excludeInvitedEmails = [],
 }) => {
   const submitHandler = onInvite || onSubmit;
   const submitting = isLoading ?? loading;
-  const [email, setEmail] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
   const [role, setRole] = useState("member");
   const [localError, setLocalError] = useState(null);
 
@@ -26,14 +29,8 @@ const InviteMemberModal = ({
     e.preventDefault();
     setLocalError(null);
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.trim()) {
-      setLocalError("Email is required");
-      return;
-    }
-    if (!emailRegex.test(email)) {
-      setLocalError("Please enter a valid email address");
+    if (!selectedUser) {
+      setLocalError("Please select a user to invite");
       return;
     }
 
@@ -42,11 +39,11 @@ const InviteMemberModal = ({
       return;
     }
 
-    submitHandler({ email: email.trim().toLowerCase(), role });
+    submitHandler({ user: selectedUser, role });
   };
 
   const handleClose = () => {
-    setEmail("");
+    setSelectedUser(null);
     setRole("member");
     setLocalError(null);
     onClose();
@@ -66,28 +63,25 @@ const InviteMemberModal = ({
           </div>
         )}
 
-        {/* Email Input */}
+        {/* User Search Dropdown */}
         <div>
           <label
-            htmlFor="invite-email"
+            htmlFor="invite-user"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            Email Address
+            Search User
           </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              id="invite-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="colleague@company.com"
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              disabled={submitting}
-            />
-          </div>
+          <UserSearchDropdown
+            id="invite-user"
+            value={selectedUser}
+            onChange={setSelectedUser}
+            excludeIds={excludeIds}
+            excludeInvitedEmails={excludeInvitedEmails}
+            placeholder="Search users by name or email..."
+            disabled={submitting}
+          />
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            If the user exists, they'll be able to accept the invitation
+            Search for existing users to invite them to this project
           </p>
         </div>
 

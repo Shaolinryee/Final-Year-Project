@@ -36,6 +36,12 @@ const initSocket = (server) => {
     // Join user-specific room for private notifications
     socket.join(`user_${socket.user.id}`);
 
+    // Join admin-specific room if user is admin
+    if (socket.user.email && socket.user.email.includes('admin')) {
+      socket.join(`admin_${socket.user.id}`);
+      console.log(`Admin ${socket.user.name} joined admin room: admin_${socket.user.id}`);
+    }
+
     // Join project-specific rooms for collaborative updates
     socket.on("join_project", (projectId) => {
       socket.join(`project_${projectId}`);
@@ -79,4 +85,11 @@ const emitToProject = (projectId, event, data, excludeUserId = null) => {
   }
 };
 
-module.exports = { initSocket, getIO, emitToUser, emitToProject };
+// Helper to send admin notification via socket
+const emitToAdmin = (userId, event, data) => {
+  if (io) {
+    io.to(`admin_${userId}`).emit(event, data);
+  }
+};
+
+module.exports = { initSocket, getIO, emitToUser, emitToProject, emitToAdmin };

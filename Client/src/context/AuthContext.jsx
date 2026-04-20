@@ -6,6 +6,9 @@ const AuthContext = createContext();
 export const AuthContextProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [originalAdmin, setOriginalAdmin] = useState(null);
+  const [impersonationId, setImpersonationId] = useState(null);
 
   // Sign Up with OTP
   const signUpWithOTP = async (email) => {
@@ -71,6 +74,14 @@ export const AuthContextProvider = ({ children }) => {
     localStorage.removeItem('user');
     setUser(null);
     return { success: true };
+  };
+
+  // Update user data
+  const updateUser = (newUserData) => {
+    const updatedUser = { ...user, ...newUserData };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    return { success: true, data: updatedUser };
   };
 
   // Verify OTP
@@ -162,14 +173,99 @@ export const AuthContextProvider = ({ children }) => {
     }
   };
 
+  // Impersonation Methods
+  const impersonateUser = async (userId, reason) => {
+    try {
+      const { data } = await api.post('/admin/impersonate', { userId, reason });
+      
+      // Store original admin session
+      const currentAdmin = JSON.parse(localStorage.getItem('user') || '{}');
+      const currentToken = localStorage.getItem('token');
+      
+      localStorage.setItem('originalAdminSession', JSON.stringify({
+        user: currentAdmin,
+        token: currentToken
+      }));
+      
+      // Set impersonation session
+      localStorage.setItem('impersonationToken', data.token);
+      localStorage.setItem('isImpersonating', 'true');
+      localStorage.setItem('impersonationId', data.impersonationId);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Update state
+      setUser(data.user);
+      setIsImpersonating(true);
+      setOriginalAdmin(currentAdmin);
+      setImpersonationId(data.impersonationId);
+      
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error impersonating user:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to impersonate user' 
+      };
+    }
+  };
+
+  const endImpersonation = async () => {
+    try {
+      const impersonationId = localStorage.getItem('impersonationId');
+      
+      if (impersonationId) {
+        await api.post('/admin/end-impersonation', { impersonationId });
+      }
+      
+      // Restore original admin session
+      const originalSession = JSON.parse(localStorage.getItem('originalAdminSession') || '{}');
+      
+      if (originalSession.token && originalSession.user) {
+        localStorage.setItem('token', originalSession.token);
+        localStorage.setItem('user', JSON.stringify(originalSession.user));
+        setUser(originalSession.user);
+      }
+      
+      // Clear impersonation data
+      localStorage.removeItem('impersonationToken');
+      localStorage.removeItem('isImpersonating');
+      localStorage.removeItem('impersonationId');
+      localStorage.removeItem('originalAdminSession');
+      
+      // Update state
+      setIsImpersonating(false);
+      setOriginalAdmin(null);
+      setImpersonationId(null);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error ending impersonation:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to end impersonation' 
+      };
+    }
+  };
+
   useEffect(() => {
     // Check local storage for existing session
     const savedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
+    const isImpersonating = localStorage.getItem('isImpersonating') === 'true';
+    const impersonationId = localStorage.getItem('impersonationId');
     
     if (savedUser && token) {
       setUser(JSON.parse(savedUser));
     }
+    
+    // Check if impersonating
+    if (isImpersonating) {
+      setIsImpersonating(true);
+      setImpersonationId(impersonationId);
+      const originalSession = JSON.parse(localStorage.getItem('originalAdminSession') || '{}');
+      setOriginalAdmin(originalSession.user);
+    }
+    
     setLoading(false);
   }, []);
 
@@ -177,17 +273,23 @@ export const AuthContextProvider = ({ children }) => {
     session: user ? { user } : null, // for compatibility with existing code
     user,
     loading,
+    isImpersonating,
+    originalAdmin,
+    impersonationId,
     signUp,
     signUpWithOTP,
     signIn,
     signOut,
     logout: signOut,
+    updateUser,
     verifyOTP,
     resendOTP,
     resetPassword,
     verifyResetPasswordOTP,
     updatePasswordForReset,
     signInWithGoogle,
+    impersonateUser,
+    endImpersonation,
   };
 
   return (

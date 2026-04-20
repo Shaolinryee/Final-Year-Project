@@ -377,9 +377,14 @@ export const invitationsApi = {
       return { data: null, error: error.response?.data?.message || "Failed to fetch invitations" };
     }
   },
-  create: async (projectId, email, role = "member") => {
+  create: async (projectId, emailOrUserId, role = "member") => {
     try {
-      const response = await api.post(`/invitations/project/${projectId}`, { email, role });
+      // Support both email (legacy) and userId (new) invitations
+      const payload = typeof emailOrUserId === 'string' && emailOrUserId.includes('@') 
+        ? { email: emailOrUserId, role }
+        : { userId: emailOrUserId, role };
+      
+      const response = await api.post(`/invitations/project/${projectId}`, payload);
       return { data: response.data.data, error: null };
     } catch (error) {
       return { data: null, error: error.response?.data?.message || "Failed to create invitation" };

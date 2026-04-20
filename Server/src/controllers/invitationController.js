@@ -1,6 +1,7 @@
 const { Invitation, Project, ProjectMember, User } = require("../models");
+const { Op } = require("sequelize");
 const crypto = require("crypto");
-const { sendInvitationEmail } = require("../utils/email");
+const { sendInvitationEmail, sendInvitationRevokedEmail } = require("../utils/email");
 const { sendNotification } = require("../utils/notification");
 
 /**
@@ -24,6 +25,11 @@ exports.getProjectInvitations = async (req, res) => {
         projectId,
         status: req.query.status || "pending",
       },
+      include: [
+        { model: Project, as: "project", attributes: ["id", "name", "description"] },
+        { model: User, as: "inviter", attributes: ["name", "avatar"] },
+        { model: User, as: "invitedUser", attributes: ["name", "email", "avatar"] },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -46,12 +52,16 @@ exports.getMyInvitations = async (req, res) => {
   try {
     const invitations = await Invitation.findAll({
       where: {
-        email: req.user.email,
+        [Op.or]: [
+          { email: req.user.email },
+          { userId: req.user.id }
+        ],
         status: "pending",
       },
       include: [
         { model: Project, as: "project", attributes: ["id", "name", "description"] },
         { model: User, as: "inviter", attributes: ["name", "avatar"] },
+        { model: User, as: "invitedUser", attributes: ["name", "email", "avatar"] },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -73,8 +83,13 @@ exports.getMyInvitations = async (req, res) => {
  */
 exports.createInvitation = async (req, res) => {
   try {
-    const { email, role = "member" } = req.body;
+    const { email, userId, role = "member" } = req.body;
     const { projectId } = req.params;
+
+    // Validate that either email or userId is provided
+    if (!email && !userId) {
+      return res.status(400).json({ success: false, message: 'Either email or userId must be provided' });
+    }
 
     // Fetch project
     const project = await Project.findByPk(projectId);
@@ -90,44 +105,93 @@ exports.createInvitation = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only project admins or owners can invite members' });
     }
 
+    // Get invited user info
+    let invitedUser = null;
+    let invitationEmail = email;
+
+    if (userId) {
+      // User-based invitation
+      invitedUser = await User.findByPk(userId);
+      if (!invitedUser) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      invitationEmail = invitedUser.email;
+
+      // Check if user is already a member
+      const existingTargetMember = await ProjectMember.findOne({
+        where: { projectId, userId: userId },
+      });
+      if (existingTargetMember) {
+        return res.status(400).json({ success: false, message: 'User is already a member of this project' });
+      }
+    } else {
+      // Email-based invitation (legacy)
+      invitedUser = await User.findOne({ where: { email } });
+    }
+
+    // Check for existing pending invitation
+    const existingInvitation = await Invitation.findOne({
+      where: {
+        projectId,
+        status: 'pending',
+        [userId ? 'userId' : 'email']: userId || email,
+      },
+    });
+
+    if (existingInvitation) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Invitation already sent to ${userId ? 'this user' : email}` 
+      });
+    }
+
     // Generate token
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    const invitation = await Invitation.create({
-      email,
+    const invitationData = {
       projectId,
       inviterId: req.user.id,
       role,
       token,
       expiresAt,
-    });
+    };
 
-    // Send email
-    await sendInvitationEmail(email, { 
-      projectName: project.name, 
-      inviterName: req.user.name,
-      projectKey: project.key || project.id?.slice(0, 8) || "PROJECT",
-      token 
-    });
+    // Add either email or userId
+    if (userId) {
+      invitationData.userId = userId;
+    } else {
+      invitationData.email = email;
+    }
+
+    const invitation = await Invitation.create(invitationData);
+
+    // Send email if we have an email address
+    if (invitationEmail) {
+      await sendInvitationEmail(invitationEmail, { 
+        projectName: project.name, 
+        inviterName: req.user.name,
+        projectKey: project.key || project.id?.slice(0, 8) || "PROJECT",
+        token 
+      });
+    }
 
     // Notify in-app if user exists
-    const invitedUser = await User.findOne({ where: { email } });
     if (invitedUser) {
-        await sendNotification({
-            userId: invitedUser.id,
-            type: 'project_invite',
-            title: 'New Project Invitation',
-            message: `${req.user.name} invited you to join the project: ${project.name}`,
-            projectId: project.id,
-            link: '/invitations'
-        });
+      await sendNotification({
+        userId: invitedUser.id,
+        type: 'project_invite',
+        title: 'New Project Invitation',
+        message: `${req.user.name} invited you to join the project: ${project.name}`,
+        projectId: project.id,
+        link: '/invitations'
+      });
     }
 
     res.status(201).json({
       success: true,
       data: invitation,
-      message: `Invitation sent to ${email}`
+      message: `Invitation sent to ${userId ? invitedUser.name : invitationEmail}`
     });
   } catch (error) {
     res.status(500).json({
@@ -143,7 +207,14 @@ exports.createInvitation = async (req, res) => {
 exports.acceptInvitation = async (req, res) => {
   try {
     const invitation = await Invitation.findOne({
-      where: { id: req.params.id, email: req.user.email, status: "pending" },
+      where: {
+        id: req.params.id,
+        [Op.or]: [
+          { email: req.user.email },
+          { userId: req.user.id }
+        ],
+        status: "pending",
+      },
     });
 
     if (!invitation) {
@@ -201,7 +272,14 @@ exports.acceptInvitation = async (req, res) => {
 exports.declineInvitation = async (req, res) => {
   try {
     const invitation = await Invitation.findOne({
-      where: { id: req.params.id, email: req.user.email, status: "pending" },
+      where: {
+        id: req.params.id,
+        [Op.or]: [
+          { email: req.user.email },
+          { userId: req.user.id }
+        ],
+        status: "pending",
+      },
     });
 
     if (!invitation) {
@@ -242,8 +320,49 @@ exports.revokeInvitation = async (req, res) => {
       });
     }
 
+    // Get project for authorization check
+    const project = await Project.findByPk(req.params.projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // Check if user is authorized to revoke (owner or admin)
+    const member = await ProjectMember.findOne({
+      where: { projectId: req.params.projectId, userId: req.user.id }
+    });
+
+    const isOwner = project.ownerId === req.user.id;
+    const isAdmin = member && member.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Only project owners or admins can revoke invitations",
+      });
+    }
+
     invitation.status = "revoked";
     await invitation.save();
+
+    // Send email notification to invited user if they exist
+    if (invitation.userId) {
+      const invitedUser = await User.findByPk(invitation.userId);
+      if (invitedUser) {
+        await sendInvitationRevokedEmail(invitedUser.email, {
+          projectName: project.name,
+          inviterName: req.user.name,
+        });
+      }
+    } else if (invitation.email) {
+      // For email-based invitations, we don't have the user info, but we can still send the email
+      await sendInvitationRevokedEmail(invitation.email, {
+        projectName: project.name,
+        inviterName: req.user.name,
+      });
+    }
 
     res.status(200).json({
       success: true,

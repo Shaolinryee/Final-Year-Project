@@ -7,9 +7,10 @@ import { UserPlus, Users } from "lucide-react";
 import { useProject } from "./ProjectLayout";
 import { membersApi, invitationsApi } from "../../services/api";
 import { useNotifications } from "../../context/NotificationContext";
-import { Button, Alert, EmptyState } from "../../components/ui";
+import { Button, EmptyState } from "../../components/ui";
 import { MemberRow, InviteMemberModal, PendingInvites } from "../../components/members";
 import { canInviteMembers, canChangeRoles, canRemoveMember } from "../../utils/permissions";
+import { toast } from "react-toastify";
 
 const ProjectMembers = () => {
   const {
@@ -30,7 +31,6 @@ const ProjectMembers = () => {
 
   const { refresh: refreshNotifications } = useNotifications();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [error, setError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
 
   // Permission checks
@@ -38,12 +38,11 @@ const ProjectMembers = () => {
   const canManageRoles = canChangeRoles(userRole);
 
   // Handlers
-  const handleInvite = async ({ email, role }) => {
+  const handleInvite = async ({ user, role }) => {
     setFormLoading(true);
-    setError(null);
 
     try {
-      const { data, error } = await invitationsApi.create(projectId, email, role);
+      const { data, error } = await invitationsApi.create(projectId, user.id, role);
       if (error) throw new Error(error);
 
       setInvitations((prev) => [...prev, data]);
@@ -51,50 +50,70 @@ const ProjectMembers = () => {
       
       // Refresh notifications (notification was created for invited user)
       refreshNotifications();
+      toast.success(`Invitation sent to ${user.name}`);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || "Failed to send invitation");
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleRevokeInvitation = async (invitationId) => {
+    console.log('handleRevokeInvitation called with invitationId:', invitationId);
+    
+    if (!invitationId) {
+      toast.error('Invalid invitation ID');
+      return;
+    }
+    
     try {
-      const { error } = await invitationsApi.revoke(invitationId);
+      const { error } = await invitationsApi.revoke(projectId, invitationId);
       if (error) throw new Error(error);
 
       setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+      toast.success("Invitation revoked successfully");
     } catch (err) {
-      setError(err.message);
+      console.error('Error in handleRevokeInvitation:', err);
+      toast.error(err.message || "Failed to revoke invitation");
     }
   };
 
   const handleAcceptInvitation = async (invitationId) => {
+    if (!invitationId) {
+      toast.error('Invalid invitation ID');
+      return;
+    }
+    
     try {
       const { error } = await invitationsApi.accept(invitationId);
       if (error) throw new Error(error);
 
       fetchMembers();
       fetchInvitations();
+      toast.success("Invitation accepted successfully");
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || "Failed to accept invitation");
     }
   };
 
   const handleDeclineInvitation = async (invitationId) => {
+    if (!invitationId) {
+      toast.error('Invalid invitation ID');
+      return;
+    }
+    
     try {
       const { error } = await invitationsApi.decline(invitationId);
       if (error) throw new Error(error);
 
       setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+      toast.success("Invitation declined successfully");
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || "Failed to decline invitation");
     }
   };
 
   const handleRoleChange = async (userId, newRole) => {
-    setError(null);
-
     try {
       const { error } = await membersApi.updateRole(projectId, userId, newRole);
       if (error) throw new Error(error);
@@ -102,21 +121,21 @@ const ProjectMembers = () => {
       setMembers((prev) =>
         prev.map((m) => (m.userId === userId ? { ...m, role: newRole } : m))
       );
+      toast.success("Role updated successfully");
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || "Failed to update role");
     }
   };
 
   const handleRemoveMember = async (userId) => {
-    setError(null);
-
     try {
       const { error } = await membersApi.remove(projectId, userId);
       if (error) throw new Error(error);
 
       setMembers((prev) => prev.filter((m) => m.userId !== userId));
+      toast.success("Member removed successfully");
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || "Failed to remove member");
     }
   };
 
@@ -140,10 +159,6 @@ const ProjectMembers = () => {
         )}
       </div>
 
-      {/* Error */}
-      {error && (
-        <Alert variant="error" message={error} onDismiss={() => setError(null)} />
-      )}
 
       {/* Pending Invitations */}
       {invitations.length > 0 && (
@@ -154,6 +169,7 @@ const ProjectMembers = () => {
           onRevoke={handleRevokeInvitation}
           onAccept={handleAcceptInvitation}
           onDecline={handleDeclineInvitation}
+          currentUser={currentUser}
           isLoading={invitationsLoading}
         />
       )}
@@ -230,7 +246,8 @@ const ProjectMembers = () => {
         onClose={() => setIsInviteOpen(false)}
         onInvite={handleInvite}
         isLoading={formLoading}
-        error={error}
+        excludeIds={members.map(m => m.userId)}
+        excludeInvitedEmails={invitations.map(inv => inv.email)}
       />
     </div>
   );

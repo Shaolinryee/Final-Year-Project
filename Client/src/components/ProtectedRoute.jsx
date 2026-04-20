@@ -14,6 +14,11 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // Redirect admin users to admin panel
+  if (session.user?.role === 'admin') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
   return children;
 };
 

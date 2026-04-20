@@ -8,13 +8,31 @@ const { emitToProject } = require('../socket');
 // @access  Private
 const getProjects = async (req, res) => {
   try {
-    const projects = await Project.findAll({
+    // Get projects where user is the owner
+    const ownedProjects = await Project.findAll({
       where: { ownerId: req.user.id },
       include: [
         { model: User, as: 'owner', attributes: ['id', 'name', 'email'] }
       ]
     });
-    res.status(200).json({ success: true, data: projects });
+
+    // Get projects where user is a member (but not owner)
+    const memberProjects = await Project.findAll({
+      where: {
+        '$members.userId$': req.user.id,
+        ownerId: { [Op.ne]: req.user.id }
+      },
+      include: [
+        { model: User, as: 'owner', attributes: ['id', 'name', 'email'] },
+        { model: ProjectMember, as: 'members', where: { userId: req.user.id }, required: true }
+      ],
+      distinct: true
+    });
+
+    // Combine both sets of projects
+    const allProjects = [...ownedProjects, ...memberProjects];
+    
+    res.status(200).json({ success: true, data: allProjects });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -60,11 +78,11 @@ const createProject = async (req, res) => {
       ownerId: req.user.id
     });
 
-    // Create owner as the first member
+    // Create owner as a first member
     await ProjectMember.create({
       projectId: project.id,
       userId: req.user.id,
-      role: 'admin'
+      role: 'owner'
     });
 
     // Log Activity

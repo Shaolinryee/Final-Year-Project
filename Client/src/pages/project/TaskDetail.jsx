@@ -53,6 +53,7 @@ import {
   canUpdateTaskStatus,
   canAddComments,
   canAddAttachments,
+  canUpdateBasicTaskProperties,
 } from "../../utils/permissions";
 
 const statusConfig = {
@@ -142,6 +143,7 @@ const TaskDetail = () => {
     canDelete: canDeleteTask(userRole),
     canAssign: canAssignTasks(userRole),
     canChangeStatus: canUpdateTaskStatus(userRole, task, currentUser?.id),
+    canUpdateBasic: canUpdateBasicTaskProperties(userRole),
     canComment: canAddComments(userRole),
     canAttach: canAddAttachments(userRole),
   }), [userRole, task, currentUser?.id]);
@@ -993,9 +995,9 @@ const TaskDetail = () => {
                   </div>
                 </div>
                 <div className="relative group/more">
-                  <button className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-xs font-medium p-1 rounded hover:bg-brand-dark/30 transition-all">
-                    <MoreHorizontal className="w-3.5 h-3.5" />
-                  </button>
+                  {permissions.canAttach && <button className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-xs font-medium p-1 rounded hover:bg-brand-dark/30 transition-all">
+                    <Paperclip className="w-3.5 h-3.5" />
+                  </button>}
                   {comment.userId === currentUser?.id && (
                     <div className="absolute top-full left-0 mt-1 invisible group-hover/more:visible bg-brand-light border border-brand-border rounded-lg shadow-2xl py-1 z-50 w-28 animate-in fade-in slide-in-from-top-1 duration-100 overflow-hidden">
                       <button 
@@ -1043,27 +1045,23 @@ const TaskDetail = () => {
                   <div className="bg-brand-dark/20 border border-brand-border rounded-lg overflow-hidden flex flex-col focus-within:border-brand/40 transition-colors shadow-inner">
                     {/* Header Toolbar (Professional Jira Style) */}
                     <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-brand-border/50 bg-white/5">
-                      <button type="button" onClick={() => insertStyle('bold')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bold (Ctrl+B)">
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('bold')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bold (Ctrl+B)">
                         <Bold className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={() => insertStyle('italic')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Italic (Ctrl+I)">
+                      </button>}
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('italic')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Italic (Ctrl+I)">
                         <Italic className="w-4 h-4" />
-                      </button>
-                      
+                      </button>}
                       <div className="w-px h-5 bg-brand-border/20 mx-1.5" />
-
-                      <button type="button" onClick={() => insertStyle('list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bullet List">
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Bullet List">
                         <List className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={() => insertStyle('ordered-list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Numbered List">
+                      </button>}
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('ordered-list')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Numbered List">
                         <ListOrdered className="w-4 h-4" />
-                      </button>
-                      
+                      </button>}
                       <div className="w-px h-5 bg-brand-border/20 mx-1.5" />
-
-                      <button type="button" onClick={() => insertStyle('code')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Code Block">
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('code')} className="p-1.5 rounded hover:bg-brand-dark/40 text-text-secondary hover:text-text-primary transition-all" title="Code Block">
                         <Code2 className="w-4 h-4" />
-                      </button>
+                      </button>}
                       
                       <div className="flex items-center gap-0.5 ml-auto">
                         <button 
@@ -1294,7 +1292,7 @@ const TaskDetail = () => {
 
               {/* Title */}
               <div className="mb-6">
-                {isEditingTitle && permissions.canEdit ? (
+                {isEditingTitle && permissions.canUpdateBasic ? (
                   <input
                     type="text"
                     value={editedTitle}
@@ -1313,9 +1311,9 @@ const TaskDetail = () => {
                   />
                 ) : (
                   <h1
-                    className={`text-xl font-semibold text-text-primary ${permissions.canEdit ? "cursor-pointer hover:text-brand" : ""} transition-colors`}
-                    onClick={() => permissions.canEdit && setIsEditingTitle(true)}
-                    title={permissions.canEdit ? "Click to edit title" : undefined}
+                    className={`text-xl font-semibold text-text-primary ${permissions.canUpdateBasic ? "cursor-pointer hover:text-brand" : ""} transition-colors`}
+                    onClick={() => permissions.canUpdateBasic && setIsEditingTitle(true)}
+                    title={permissions.canUpdateBasic ? "Click to edit title" : undefined}
                   >
                     {task.title}
                   </h1>
@@ -1374,17 +1372,17 @@ const TaskDetail = () => {
                 {/* Priority Dropdown */}
                 <div className="relative">
                   <button
-                    onClick={() => permissions.canEdit && setShowPriorityMenu(!showPriorityMenu)}
-                    disabled={!permissions.canEdit}
+                    onClick={() => permissions.canUpdateBasic && setShowPriorityMenu(!showPriorityMenu)}
+                    disabled={!permissions.canUpdateBasic}
                     className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${priorityCfg.bgColor} ${priorityCfg.color} ${
-                      permissions.canEdit ? "cursor-pointer" : "cursor-default opacity-70"
+                      permissions.canUpdateBasic ? "cursor-pointer" : "cursor-default opacity-70"
                     }`}
-                    title={permissions.canEdit ? "Change priority" : "You cannot change task priority"}
+                    title={permissions.canUpdateBasic ? "Change priority" : "You cannot change task priority"}
                   >
                     {priorityCfg.label}
-                    {permissions.canEdit && <ChevronDown className="w-4 h-4" />}
+                    {permissions.canUpdateBasic && <ChevronDown className="w-4 h-4" />}
                   </button>
-                  {showPriorityMenu && permissions.canEdit && (
+                  {showPriorityMenu && permissions.canUpdateBasic && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowPriorityMenu(false)} />
                       <div className="absolute left-0 top-full mt-1 w-32 bg-brand-light rounded-lg shadow-lg border border-brand-border py-1 z-20">
@@ -1408,16 +1406,16 @@ const TaskDetail = () => {
               {/* Description */}
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-text-secondary mb-2">Description</h3>
-                {isEditing && permissions.canEdit ? (
+                {isEditing && permissions.canUpdateBasic ? (
                   <div className="group/editor bg-brand-dark/30 border border-brand-border rounded-lg overflow-hidden focus-within:border-brand transition-all">
                     <div className="flex items-center gap-1 p-2 border-b border-brand-border bg-brand-dark/20">
-                      <button type="button" onClick={() => insertStyle('bold')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Bold (Ctrl+B)"><Bold className="w-4 h-4" /></button>
-                      <button type="button" onClick={() => insertStyle('italic')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Italic (Ctrl+I)"><Italic className="w-4 h-4" /></button>
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('bold')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Bold (Ctrl+B)"><Bold className="w-4 h-4" /></button>}
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('italic')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Italic (Ctrl+I)"><Italic className="w-4 h-4" /></button>}
                       <div className="w-px h-4 bg-brand-border mx-1" />
-                      <button type="button" onClick={() => insertStyle('list')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>
-                      <button type="button" onClick={() => insertStyle('ordered-list')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('list')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>}
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('ordered-list')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>}
                       <div className="w-px h-4 bg-brand-border mx-1" />
-                      <button type="button" onClick={() => insertStyle('code')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Code"><Code2 className="w-4 h-4" /></button>
+                      {permissions.canUpdateBasic && <button type="button" onClick={() => insertStyle('code')} className="p-1.5 rounded hover:bg-brand-dark/50 text-text-secondary hover:text-text-primary transition-colors" title="Code"><Code2 className="w-4 h-4" /></button>}
                     </div>
                     <textarea
                       id="task-description-editor"
@@ -1432,12 +1430,12 @@ const TaskDetail = () => {
                   </div>
                 ) : (
                   <div
-                    className={`text-text-primary bg-brand-dark/30 rounded-lg p-4 min-h-[100px] whitespace-pre-wrap ${permissions.canEdit ? "cursor-pointer hover:bg-brand-dark/50" : ""} transition-colors`}
-                    onClick={() => permissions.canEdit && setIsEditing(true)}
+                    className={`text-text-primary bg-brand-dark/30 rounded-lg p-4 min-h-[100px] whitespace-pre-wrap ${permissions.canUpdateBasic ? "cursor-pointer hover:bg-brand-dark/50" : ""} transition-colors`}
+                    onClick={() => permissions.canUpdateBasic && setIsEditing(true)}
                   >
                     {task.description || (
                       <span className="text-text-secondary italic">
-                        {permissions.canEdit ? "Click to add description..." : "No description"}
+                        {permissions.canUpdateBasic ? "Click to add description..." : "No description"}
                       </span>
                     )}
                   </div>
@@ -1500,7 +1498,7 @@ const TaskDetail = () => {
                       </span>
                     )}
                   </h3>
-                  <button
+                  {permissions.canAttach && <button
                     type="button"
                     onClick={() => {
                       setUploadTarget('task');
@@ -1510,7 +1508,7 @@ const TaskDetail = () => {
                     title="Upload attachments"
                   >
                     <Plus className="w-4 h-4" />
-                  </button>
+                  </button>}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1916,7 +1914,7 @@ const TaskDetail = () => {
                 {/* Due Date */}
                 <div>
                   <label className="text-xs text-text-secondary mb-1 block">Due Date</label>
-                  {showDueDateMenu && permissions.canEdit ? (
+                  {showDueDateMenu && permissions.canUpdateBasic ? (
                     <div className="relative">
                       <div className="fixed inset-0 z-10" onClick={() => setShowDueDateMenu(false)} />
                       <div className="absolute left-0 top-full mt-1 w-full bg-brand-light rounded-lg shadow-lg border border-brand-border p-3 z-20">
@@ -1957,10 +1955,10 @@ const TaskDetail = () => {
                   ) : (
                     <div
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-dark/30 ${
-                        permissions.canEdit ? "cursor-pointer hover:bg-brand-dark/50" : ""
+                        permissions.canUpdateBasic ? "cursor-pointer hover:bg-brand-dark/50" : ""
                       } transition-colors`}
-                      onClick={() => permissions.canEdit && setShowDueDateMenu(true)}
-                      title={permissions.canEdit ? "Click to edit due date" : undefined}
+                      onClick={() => permissions.canUpdateBasic && setShowDueDateMenu(true)}
+                      title={permissions.canUpdateBasic ? "Click to edit due date" : undefined}
                     >
                       <Calendar className="w-4 h-4 text-text-secondary" />
                       <span className={`text-sm ${
@@ -1970,7 +1968,7 @@ const TaskDetail = () => {
                       }`}>
                         {formatDate(task.dueDate)}
                       </span>
-                      {permissions.canEdit && <ChevronDown className="w-4 h-4 text-text-secondary ml-auto" />}
+                      {permissions.canUpdateBasic && <ChevronDown className="w-4 h-4 text-text-secondary ml-auto" />}
                     </div>
                   )}
                 </div>

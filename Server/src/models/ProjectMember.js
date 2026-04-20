@@ -16,7 +16,7 @@ const ProjectMember = sequelize.define('ProjectMember', {
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM('admin', 'member', 'viewer'),
+    type: DataTypes.ENUM('owner', 'admin', 'member', 'viewer'),
     defaultValue: 'member',
   },
 }, {

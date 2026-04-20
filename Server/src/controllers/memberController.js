@@ -1,5 +1,6 @@
 const { ProjectMember, User, Project } = require('../models');
 const { sendNotification } = require('../utils/notification');
+const { getUserProjectRole } = require('../middleware/rbac');
 
 // @desc    Get project members
 // @route   GET /api/projects/:projectId/members
@@ -44,13 +45,13 @@ const addMember = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    // Check if caller is owner or admin of project (simplified for now)
-    if (project.ownerId !== req.user.id) {
-       // Also check if admin member
-       const adminCheck = await ProjectMember.findOne({ where: { projectId, userId: req.user.id, role: 'admin' } });
-       if (!adminCheck) {
-         return res.status(403).json({ success: false, message: 'Not authorized to add members' });
-       }
+    // Check if caller has permission to add members (admin or owner)
+    const userRole = await getUserProjectRole(req.user.id, projectId);
+    if (!userRole || (userRole.toLowerCase() !== 'admin' && userRole.toLowerCase() !== 'owner')) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Only project admins and owners can add members' 
+      });
     }
 
     // Check if user is already a member
@@ -94,9 +95,29 @@ const updateMemberRole = async (req, res) => {
     const project = await Project.findByPk(projectId);
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-    // Authorization check (simplified)
-    if (project.ownerId !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
+    // Project owners and admins can change member roles (with restrictions)
+    const userRole = await getUserProjectRole(req.user.id, projectId);
+    if (!userRole || (userRole.toLowerCase() !== 'owner' && userRole.toLowerCase() !== 'admin')) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Only project owners and admins can change member roles' 
+      });
+    }
+
+    // Get target member's role to enforce hierarchy
+    const targetMember = await ProjectMember.findOne({ where: { projectId, userId } });
+    if (!targetMember) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    // Admins cannot change roles of owners or other admins
+    if (userRole.toLowerCase() === 'admin') {
+      if (targetMember.role.toLowerCase() === 'owner' || targetMember.role.toLowerCase() === 'admin') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Admins can only change roles of members, not owners or other admins' 
+        });
+      }
     }
 
     const member = await ProjectMember.findOne({ where: { projectId, userId } });
@@ -123,9 +144,46 @@ const removeMember = async (req, res) => {
     const project = await Project.findByPk(projectId);
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-    // Authorization check
-    if (project.ownerId !== req.user.id && req.user.id !== userId) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
+    // Check permissions for removing members
+    const userRole = await getUserProjectRole(req.user.id, projectId);
+    if (!userRole) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You are not a member of this project' 
+      });
+    }
+
+    // Get target member's role to enforce hierarchy
+    const targetMember = await ProjectMember.findOne({ where: { projectId, userId } });
+    if (!targetMember) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    // Owners can remove anyone (except themselves)
+    // Admins can remove members (but not other admins/owners)
+    // Members cannot remove anyone
+    if (userRole.toLowerCase() === 'owner') {
+      // Owner can remove anyone except themselves
+      if (req.user.id === userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Cannot remove yourself from project. Use leave project instead.' 
+        });
+      }
+    } else if (userRole.toLowerCase() === 'admin') {
+      // Admin can remove members and other admins, but not owners
+      if (targetMember.role.toLowerCase() === 'owner') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Admins cannot remove project owners' 
+        });
+      }
+    } else {
+      // Members cannot remove anyone
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Members do not have permission to remove other members' 
+      });
     }
 
     const member = await ProjectMember.findOne({ where: { projectId, userId } });

@@ -8,13 +8,15 @@ import { ErrorBoundary } from "react-error-boundary";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import Loading from "./components/Loading";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import { ThemeProvider } from "./context/ThemeContext";
-import { AuthContextProvider } from "./context/AuthContext";
+import { AuthContextProvider, useAuth } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { SocketProvider } from "./context/SocketContext";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ImpersonationBanner from "./components/ImpersonationBanner";
 
 // Lazy load pages
 const HomePage = lazy(() => import("./pages/Marketing/HomePage"));
@@ -67,6 +69,16 @@ const ProjectActivity = lazy(() => import("./pages/project/ProjectActivity"));
 const ProjectSettings = lazy(() => import("./pages/project/ProjectSettings"));
 const TaskDetail = lazy(() => import("./pages/project/TaskDetail"));
 
+// Admin Panel lazy loaded components
+const AdminLayout = lazy(() => import("./admin/components/AdminLayout"));
+const AdminDashboard = lazy(() => import("./admin/pages/AdminDashboard"));
+const UserManagement = lazy(() => import("./admin/pages/UserManagement"));
+const ProjectPermissionManagement = lazy(() => import("./admin/pages/ProjectPermissionManagement"));
+const SystemSettings = lazy(() => import("./admin/pages/SystemSettings"));
+const ActivityLogs = lazy(() => import("./admin/pages/ActivityLogs"));
+const StorageManagement = lazy(() => import("./admin/pages/StorageManagement"));
+const Notifications = lazy(() => import("./admin/pages/Notifications"));
+const AdminProfile = lazy(() => import("./admin/pages/AdminProfile"));
 
 // Wrapper to add Suspense to each page individually
 const withSuspense = (Component, fallback) => {
@@ -85,6 +97,32 @@ const withProtectedLayout = (Component, fallback) => {
         <Component />
       </ProtectedRoute>
     </Suspense>
+  );
+};
+
+// Wrapper for admin protected routes
+const withAdminProtectedLayout = (Component, fallback) => {
+  return (
+    <Suspense fallback={fallback}>
+      <AdminProtectedRoute>
+        <Component />
+      </AdminProtectedRoute>
+    </Suspense>
+  );
+};
+
+// Wrapper component for Impersonation Banner
+const ImpersonationBannerWrapper = () => {
+  const { isImpersonating, user, endImpersonation } = useAuth();
+  
+  if (!isImpersonating || !user) return null;
+  
+  return (
+    <ImpersonationBanner
+      userName={user.name}
+      userEmail={user.email}
+      onReturnToAdmin={endImpersonation}
+    />
   );
 };
 
@@ -275,6 +313,52 @@ const router = createBrowserRouter([
       },
     ],
   },
+  // ==========================================
+  // Admin Panel Routes
+  // ==========================================
+  {
+    path: "/admin",
+    element: withAdminProtectedLayout(AdminLayout, <Loading/>),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="dashboard" replace />,
+      },
+      {
+        path: "dashboard",
+        element: withSuspense(AdminDashboard, <Loading/>),
+      },
+      {
+        path: "users",
+        element: withSuspense(UserManagement, <Loading/>),
+      },
+      {
+        path: "permissions",
+        element: withSuspense(ProjectPermissionManagement, <Loading/>),
+      },
+      {
+        path: "settings",
+        element: withSuspense(SystemSettings, <Loading/>),
+      },
+      {
+        path: "logs",
+        element: withSuspense(ActivityLogs, <Loading/>),
+      },
+      {
+        path: "storage",
+        element: withSuspense(StorageManagement, <Loading/>),
+      },
+      {
+        path: "notifications",
+        element: withSuspense(Notifications, <Loading/>),
+      },
+      {
+        path: "profile",
+        element: withSuspense(AdminProfile, <Loading/>),
+      },
+      // Additional admin routes will be added here
+    ],
+  },
   {
     path: "*",
     element: withSuspense(NotFoundPage, <div>Page not found...</div>),
@@ -291,6 +375,7 @@ function App() {
               <ErrorBoundary fallback={<div>Something went wrong</div>}>
                 <RouterProvider router={router} />
                 <ToastContainer position="top-right" autoClose={3000} />
+                <ImpersonationBannerWrapper />
               </ErrorBoundary>
             </NotificationProvider>
           </ThemeProvider>

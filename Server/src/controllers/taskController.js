@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { logActivity } = require('../utils/activity');
 const { sendNotification } = require('../utils/notification');
 const { emitToProject } = require('../socket');
+const { getUserProjectRole } = require('../middleware/rbac');
 
 // @desc    Get all tasks for a project
 // @route   GET /api/tasks/project/:projectId
@@ -137,6 +138,15 @@ const createTask = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Title and Project ID are required' });
     }
 
+    // Check if user has permission to create tasks (admin or owner)
+    const userRole = await getUserProjectRole(req.user.id, projectId);
+    if (!userRole || (userRole.toLowerCase() !== 'admin' && userRole.toLowerCase() !== 'owner')) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Only project admins and owners can create tasks' 
+      });
+    }
+
     const task = await Task.create({
       title,
       description,
@@ -196,6 +206,29 @@ const updateTask = async (req, res) => {
 
     if (!task) {
       return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
+    // Check if user has permission to update this task
+    const userRole = await getUserProjectRole(req.user.id, task.projectId);
+    if (!userRole) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You are not a member of this project' 
+      });
+    }
+
+    // Allow update if user is admin/owner OR any project member for basic updates
+    const isAdminOrOwner = userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'owner';
+    
+    // Allow any project member to update basic task properties (status, priority, assignee)
+    // Only restrict structural changes (title, description, etc.) to admins/owners
+    const isBasicUpdate = req.body.status || req.body.priority || req.body.assigneeId !== undefined;
+    
+    if (!isAdminOrOwner && !isBasicUpdate) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Only project admins, owners, or members can perform this update' 
+      });
     }
 
     const oldStatus = task.status;
@@ -286,6 +319,15 @@ const deleteTask = async (req, res) => {
 
     if (!task) {
       return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
+    // Check if user has permission to delete this task (admin or owner only)
+    const userRole = await getUserProjectRole(req.user.id, task.projectId);
+    if (!userRole || (userRole.toLowerCase() !== 'admin' && userRole.toLowerCase() !== 'owner')) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Only project admins and owners can delete tasks' 
+      });
     }
 
     const projectId = task.projectId;

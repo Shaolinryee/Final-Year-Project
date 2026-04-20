@@ -1,4 +1,4 @@
-const { User } = require('../models');
+const { User, SystemLog } = require('../models');
 const { hashPassword, comparePassword, generateToken } = require('../utils/auth');
 const { sendOTPEmail } = require('../utils/email');
 const crypto = require('crypto');
@@ -42,7 +42,8 @@ const register = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        avatar: user.avatar
       }
     });
   } catch (error) {
@@ -71,6 +72,27 @@ const login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
+    // Update last login and login count
+    await user.update({
+      lastLoginAt: new Date(),
+      loginCount: user.loginCount + 1
+    });
+
+    // Create login log entry
+    await SystemLog.create({
+      userId: user.id,
+      action: 'login',
+      resource: 'authentication',
+      details: { 
+        loginMethod: 'password',
+        timestamp: new Date().toISOString()
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      severity: 'info',
+      category: 'authentication'
+    });
+
     // Generate tokens
     const token = generateToken(user.id, user.email, user.name);
 
@@ -81,7 +103,8 @@ const login = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        avatar: user.avatar
       }
     });
   } catch (error) {
@@ -159,6 +182,27 @@ const verifyOTP = async (req, res) => {
     user.resetPasswordExpires = null;
     await user.save();
 
+    // Update login info
+    await user.update({
+      lastLoginAt: new Date(),
+      loginCount: user.loginCount + 1
+    });
+
+    // Create login log entry
+    await SystemLog.create({
+      userId: user.id,
+      action: 'login',
+      resource: 'authentication',
+      details: { 
+        loginMethod: 'otp',
+        timestamp: new Date().toISOString()
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      severity: 'info',
+      category: 'authentication'
+    });
+
     const authToken = generateToken(user.id, user.email, user.name);
 
     res.status(200).json({
@@ -168,7 +212,8 @@ const verifyOTP = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        avatar: user.avatar
       }
     });
   } catch (error) {
@@ -234,7 +279,9 @@ const verifyResetPasswordOTP = async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar
       }
     });
   } catch (error) {
@@ -319,6 +366,27 @@ const googleLogin = async (req, res) => {
         // No password for Google users
       });
     }
+
+    // Update login info
+    await user.update({
+      lastLoginAt: new Date(),
+      loginCount: user.loginCount + 1
+    });
+
+    // Create login log entry
+    await SystemLog.create({
+      userId: user.id,
+      action: 'login',
+      resource: 'authentication',
+      details: { 
+        loginMethod: 'google_oauth',
+        timestamp: new Date().toISOString()
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      severity: 'info',
+      category: 'authentication'
+    });
 
     const token = generateToken(user.id, user.email, user.name);
 

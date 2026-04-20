@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permission Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .permission { padding: 10px; margin: 5px 0; border-left: 4px solid #ddd; }
+        .allowed { color: #28a745; }
+        .denied { color: #dc2626; }
+        .role { font-weight: bold; color: #6366f1; }
+        .user-info { background: #e5e7eb; padding: 10px; margin: 10px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Permission Debug Tool</h1>
+        <p>Open this file in your browser to debug permission issues:</p>
+        
+        <div class="user-info">
+            <h3>Current User Info</h3>
+            <div id="user-role">Loading user role...</div>
+            <div id="user-id">Loading user ID...</div>
+            <div id="project-members">Loading project members...</div>
+        </div>
+        
+        <div class="permission">
+            <h3>Permission Checks</h3>
+            <div id="can-create-task">Checking canCreateTask...</div>
+            <div id="can-edit-task">Checking canEditAny...</div>
+            <div id="can-delete-task">Checking canDeleteTask...</div>
+            <div id="can-update-status">Checking canUpdateTaskStatus...</div>
+            <div id="can-assign-task">Checking canAssignTasks...</div>
+        </div>
+        
+        <button onclick="testPermissions()">Test Permissions</button>
+        <button onclick="window.location.reload()">Reload Page</button>
+    </div>
+
+    <script>
+        // This will be populated by the main application
+        let currentUser = null;
+        let userRole = null;
+        let members = [];
+        let currentTask = null;
+
+        // Simulate the permission checking logic
+        function testPermissions() {
+            if (!currentUser || !userRole) {
+                alert('User information not loaded. Please make sure you\'re logged in.');
+                return;
+            }
+
+            const role = userRole?.toLowerCase();
+            
+            // Test all permission functions
+            const canCreate = role && (role === 'owner' || role === 'admin');
+            const canEdit = role && (role === 'owner' || role === 'admin');
+            const canDelete = role && (role === 'owner' || role === 'admin');
+            const canUpdate = role && (role === 'owner' || role === 'admin' || role === 'member');
+            const canAssign = role && (role === 'owner' || role === 'admin');
+
+            document.getElementById('can-create-task').innerHTML = `canCreateTask: <span class="${canCreate ? 'allowed' : 'denied'}">${canCreate}</span>`;
+            document.getElementById('can-edit-task').innerHTML = `canEditAny: <span class="${canEdit ? 'allowed' : 'denied'}">${canEdit}</span>`;
+            document.getElementById('can-delete-task').innerHTML = `canDeleteTask: <span class="${canDelete ? 'allowed' : 'denied'}">${canDelete}</span>`;
+            document.getElementById('can-update-status').innerHTML = `canUpdateTaskStatus: <span class="${canUpdate ? 'allowed' : 'denied'}">${canUpdate}</span>`;
+            document.getElementById('can-assign-task').innerHTML = `canAssignTasks: <span class="${canAssign ? 'allowed' : 'denied'}">${canAssign}</span>`;
+        }
+
+        // Wait for the main app to load user data
+        setTimeout(() => {
+            // Try to get user data from the main window
+            if (window.currentUser) {
+                currentUser = window.currentUser;
+                document.getElementById('user-id').textContent = currentUser.id;
+                
+                // Try to get user role from ProjectLayout context
+                if (window.getUserRole) {
+                    userRole = window.getUserRole(window.members || [], currentUser.id);
+                    document.getElementById('user-role').textContent = `Role: ${userRole}`;
+                }
+                
+                if (window.members) {
+                    members = window.members;
+                    document.getElementById('project-members').textContent = `Members: ${members.length} found`;
+                }
+                
+                if (window.currentTask) {
+                    currentTask = window.currentTask;
+                }
+                
+                testPermissions();
+            } else {
+                document.getElementById('user-role').textContent = 'Could not access user data from main window';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -91,9 +91,43 @@ const sendOTPEmail = async (email, { otp, type = 'verification' }) => {
   return sendEmail(email, `${title} - CollabSpace`, html);
 };
 
+/**
+ * Professional Invitation Revoked Email Template
+ */
+const sendInvitationRevokedEmail = async (email, { projectName, inviterName }) => {
+  const html = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #dc2626; margin: 0; font-size: 28px;">Invitation Revoked</h1>
+      </div>
+      
+      <div style="background-color: #fef2f2; border-radius: 16px; padding: 40px; border: 1px solid #dc2626; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1);">
+        <h2 style="margin-top: 0; color: #dc2626;">Your invitation has been revoked</h2>
+        <p style="font-size: 16px; line-height: 1.6; color: #4b5563;">The invitation to join <strong>${projectName}</strong> on CollabSpace has been revoked by <strong>${inviterName}</strong>.</p>
+        
+        <div style="margin: 35px 0; text-align: center; color: #6b7280; font-size: 14px;">
+          <p>This may have been done due to:</p>
+          <ul style="text-align: left; display: inline-block; margin: 0 auto;">
+            <li style="margin-bottom: 8px;">• Project requirements changed</li>
+            <li style="margin-bottom: 8px;">• Invitation sent by mistake</li>
+            <li style="margin-bottom: 8px;">• User already joined through other means</li>
+          </ul>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: #94a3b8; font-size: 12px;">
+          <p>&copy; 2026 CollabSpace. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendEmail(email, `Invitation to ${projectName} - Revoked`, html);
+};
+
 module.exports = {
   sendEmail,
   sendInvitationEmail,
+  sendInvitationRevokedEmail,
   sendOTPEmail,
   transporter,
 };

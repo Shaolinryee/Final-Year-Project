@@ -49,6 +49,16 @@ const connectDB = async () => {
       await sequelize.query("ALTER TABLE \"attachments\" ADD COLUMN \"commentId\" UUID");
     } catch (err) {}
 
+    // Add userId column to invitations table for user-based invitations
+    try {
+      await sequelize.query("ALTER TABLE \"invitations\" ADD COLUMN \"userId\" UUID");
+    } catch (err) {}
+
+    // Make email column nullable in invitations table
+    try {
+      await sequelize.query("ALTER TABLE \"invitations\" ALTER COLUMN \"email\" DROP NOT NULL");
+    } catch (err) {}
+
     // Sync models without destructive alter (prevents Sequelize Postgres sync bugs)
     await sequelize.sync({ alter: false });
     console.log('Database models synced');

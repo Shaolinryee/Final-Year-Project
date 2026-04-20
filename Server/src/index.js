@@ -43,6 +43,13 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/activities', require('./routes/activityRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/invitations', require('./routes/invitationRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/admin', require('./routes/impersonationRoutes'));
+app.use('/api/temp', require('./routes/tempRoutes'));
+app.use('/api/simple', require('./routes/simpleAdminRoutes'));
+
+// Serve static files (uploads)
+app.use('/uploads', express.static('uploads'));
 
 // 404 Handler
 app.use((req, res) => {
@@ -60,6 +67,29 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
+  
+  // Start notification scheduler
+  const notificationScheduler = require('./schedulers/notificationScheduler');
+  notificationScheduler.start();
+  
+  // Graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('Received SIGINT, shutting down gracefully...');
+    notificationScheduler.stop();
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+  
+  process.on('SIGTERM', () => {
+    console.log('Received SIGTERM, shutting down gracefully...');
+    notificationScheduler.stop();
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
 });
 
 module.exports = app;

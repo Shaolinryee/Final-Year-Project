@@ -38,6 +38,34 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('user', 'admin'),
     defaultValue: 'user',
   },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+  },
+  lastLoginAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  loginCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  suspendedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  suspendedBy: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id',
+    },
+  },
+  suspensionReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   isVerified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
@@ -53,6 +81,14 @@ const User = sequelize.define('User', {
   resetPasswordExpires: {
     type: DataTypes.DATE,
     defaultValue: null,
+  },
+  adminRoleId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'admin_roles',
+      key: 'id',
+    },
   },
 }, {
   timestamps: true,

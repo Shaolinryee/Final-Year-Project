@@ -1,3 +1,4 @@
+const { sequelize } = require('../config/database');
 const User = require("./User");
 const Project = require("./Project");
 const ProjectMember = require("./ProjectMember");
@@ -9,6 +10,22 @@ const Invitation = require("./Invitation");
 const Notification = require("./Notification");
 const Reaction = require("./Reaction");
 
+// Admin models - Temporarily individually loaded
+const AdminRole = require("./AdminRole");
+const AdminPermission = require("./AdminPermission");
+const SystemLog = require("./SystemLog");
+const SystemSetting = require("./SystemSetting");
+const AdminNotificationPreferences = require("./AdminNotificationPreferences");
+const SystemNotification = require("./SystemNotification");
+const NotificationTemplate = require("./NotificationTemplate");
+const NotificationDeliveryLog = require("./NotificationDeliveryLog");
+
+// Project Permission model
+const ProjectPermission = require("./ProjectPermission");
+
+// Impersonation model
+const ImpersonationLog = require("./ImpersonationLog");
+
 // --- USER ASSOCIATIONS ---
 User.hasMany(Project, { foreignKey: "ownerId", as: "ownedProjects" });
 User.hasMany(ProjectMember, { foreignKey: "userId", as: "memberships" });
@@ -18,6 +35,12 @@ User.hasMany(Comment, { foreignKey: "userId", as: "comments" });
 User.hasMany(Notification, { foreignKey: "userId", as: "notifications" });
 User.hasMany(Attachment, { foreignKey: "userId", as: "attachments" });
 User.hasMany(Reaction, { foreignKey: "userId", as: "reactions" });
+
+// --- IMPERSONATION ASSOCIATIONS ---
+User.hasMany(ImpersonationLog, { foreignKey: "adminId", as: "adminImpersonations" });
+User.hasMany(ImpersonationLog, { foreignKey: "userId", as: "userImpersonations" });
+ImpersonationLog.belongsTo(User, { foreignKey: "adminId", as: "admin" });
+ImpersonationLog.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 // --- PROJECT ASSOCIATIONS ---
 Project.belongsTo(User, { foreignKey: "ownerId", as: "owner" });
@@ -60,6 +83,7 @@ Activity.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 // --- INVITATION ASSOCIATIONS ---
 Invitation.belongsTo(User, { foreignKey: "inviterId", as: "inviter" });
+Invitation.belongsTo(User, { foreignKey: "userId", as: "invitedUser" });
 Invitation.belongsTo(Project, { foreignKey: "projectId", as: "project" });
 
 // --- NOTIFICATION ASSOCIATIONS ---
@@ -70,6 +94,132 @@ Notification.belongsTo(Task, { foreignKey: "taskId", as: "task" });
 // --- REACTION ASSOCIATIONS ---
 Reaction.belongsTo(Comment, { foreignKey: "commentId", as: "comment" });
 Reaction.belongsTo(User, { foreignKey: "userId", as: "user" });
+
+// --- ADMIN MODEL ASSOCIATIONS ---
+// Admin Role and Permission Associations
+AdminRole.belongsToMany(AdminPermission, {
+  through: 'admin_role_permissions',
+  foreignKey: 'adminRoleId',
+  otherKey: 'adminPermissionId',
+  as: 'permissions'
+});
+
+AdminPermission.belongsToMany(AdminRole, {
+  through: 'admin_role_permissions',
+  foreignKey: 'adminPermissionId',
+  otherKey: 'adminRoleId',
+  as: 'roles'
+});
+
+// User and Admin Role Associations
+User.belongsTo(AdminRole, {
+  foreignKey: 'adminRoleId',
+  as: 'adminRole'
+});
+
+AdminRole.hasMany(User, {
+  foreignKey: 'adminRoleId',
+  as: 'users'
+});
+
+// User and System Log Associations
+User.hasMany(SystemLog, {
+  foreignKey: 'userId',
+  as: 'systemLogs'
+});
+
+SystemLog.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+// Project Permission Associations
+ProjectPermission.belongsTo(Project, {
+  foreignKey: 'projectId',
+  as: 'project'
+});
+
+ProjectPermission.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator'
+});
+
+Project.hasMany(ProjectPermission, {
+  foreignKey: 'projectId',
+  as: 'permissions'
+});
+
+// User and System Setting Associations
+User.hasMany(SystemSetting, {
+  foreignKey: 'updatedBy',
+  as: 'updatedSettings'
+});
+
+SystemSetting.belongsTo(User, {
+  foreignKey: 'updatedBy',
+  as: 'updatedByUser'
+});
+
+// Admin Notification Associations
+User.hasOne(AdminNotificationPreferences, {
+  foreignKey: 'userId',
+  as: 'notificationPreferences'
+});
+
+AdminNotificationPreferences.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+User.hasMany(SystemNotification, {
+  foreignKey: 'createdBy',
+  as: 'createdNotifications'
+});
+
+SystemNotification.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator'
+});
+
+SystemNotification.hasMany(NotificationDeliveryLog, {
+  foreignKey: 'notificationId',
+  as: 'deliveryLogs'
+});
+
+NotificationDeliveryLog.belongsTo(SystemNotification, {
+  foreignKey: 'notificationId',
+  as: 'notification'
+});
+
+NotificationDeliveryLog.belongsTo(User, {
+  foreignKey: 'adminId',
+  as: 'admin'
+});
+
+User.hasMany(NotificationDeliveryLog, {
+  foreignKey: 'adminId',
+  as: 'notificationDeliveries'
+});
+
+User.hasMany(NotificationTemplate, {
+  foreignKey: 'createdBy',
+  as: 'createdNotificationTemplates'
+});
+
+User.hasMany(NotificationTemplate, {
+  foreignKey: 'updatedBy',
+  as: 'updatedNotificationTemplates'
+});
+
+NotificationTemplate.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator'
+});
+
+NotificationTemplate.belongsTo(User, {
+  foreignKey: 'updatedBy',
+  as: 'updater'
+});
 
 module.exports = {
   User,
@@ -82,4 +232,15 @@ module.exports = {
   Invitation,
   Notification,
   Reaction,
+  AdminRole,
+  AdminPermission,
+  SystemLog,
+  SystemSetting,
+  AdminNotificationPreferences,
+  SystemNotification,
+  NotificationTemplate,
+  NotificationDeliveryLog,
+  ProjectPermission,
+  ImpersonationLog,
+  sequelize,
 };
